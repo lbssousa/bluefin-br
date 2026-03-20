@@ -1,13 +1,13 @@
 ---
-# Builds the "stable" and "stable-daily" image streams.
+# Builds the "testing" image stream (previously known as "latest").
 #
 # Tag scheme (mirrors Bluefin, see https://docs.projectbluefin.io/blog/unifying-bluefin/):
-#   stable-daily        - every daily build from the stable base
-#   stable-daily.YYYYMMDD
-#   stable              - weekly "promoted" stable build (every Tuesday)
-#   stable.YYYYMMDD
+#   testing             - every build from the current Fedora release
+#   testing.YYYYMMDD
 #
-name: Build stable image
+# Triggers on every push to main so users always have an up-to-date testing image.
+#
+name: Build testing image
 on:
   pull_request:
     branches:
@@ -16,7 +16,7 @@ on:
       - "**/README.md"
       - ".github/workflows/*validate*.yml"
   schedule:
-    - cron: '0 1 * * *'    # 01:00 UTC daily  → produces stable-daily
+    - cron: '0 3 * * *'    # 03:00 UTC daily
   push:
     branches:
       - main
@@ -25,11 +25,12 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_DESC: "Bluefin para o Brasil"
-  IMAGE_KEYWORDS: "bootc,ublue,universal-blue,bluefin,brasil,pt-br"
+  IMAGE_DESC: "Bluefin para o Brasil (testing)"
+  IMAGE_KEYWORDS: "bootc,ublue,universal-blue,bluefin,brasil,pt-br,testing"
   IMAGE_LOGO_URL: "https://avatars.githubusercontent.com/u/120078124?s=200&v=4"
   IMAGE_NAME: "${{ github.event.repository.name }}"
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
+  DEFAULT_TAG: "testing"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
@@ -78,22 +79,6 @@ jobs:
           echo "BREW_IMAGE_DIGEST=${BREW_IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "FEDORA_MAJOR_VERSION=${FEDORA_MAJOR_VERSION}" >> $GITHUB_ENV
 
-      - name: Determine tags
-        id: tags
-        run: |
-          # Every run produces a stable-daily tag.
-          # On Tuesdays (schedule) or workflow_dispatch we also promote to stable.
-          DATE=$(date -u +%Y%m%d)
-          TODAY=$(date -u +%A)
-          TAGS="stable-daily stable-daily.${DATE}"
-          if [[ "${{ github.event_name }}" == "schedule" && "${TODAY}" == "Tuesday" ]] || \
-             [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            TAGS="${TAGS} stable stable.${DATE}"
-          fi
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-          # Use stable-daily as the primary build tag
-          echo "DEFAULT_TAG=stable-daily" >> $GITHUB_ENV
-
       - name: Get current date
         id: date
         run: echo "date=$(date -u +%Y\-%m\-%d\T%H\:%M\:%S\Z)" >> $GITHUB_OUTPUT
@@ -103,8 +88,8 @@ jobs:
         id: metadata
         with:
           tags: |
-            type=raw,value=stable-daily
-            type=raw,value=stable-daily.{{date 'YYYYMMDD'}}
+            type=raw,value=testing
+            type=raw,value=testing.{{date 'YYYYMMDD'}}
             type=sha,enable=${{ github.event_name == 'pull_request' }}
             type=ref,event=pr
           labels: |
@@ -116,12 +101,12 @@ jobs:
             org.opencontainers.image.title=${{ env.IMAGE_NAME }}
             org.opencontainers.image.url=https://github.com/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}/tree/${{ github.sha }}
             org.opencontainers.image.vendor=${{ github.repository_owner }}
-            org.opencontainers.image.version=stable-daily.{{date 'YYYYMMDD'}}
+            org.opencontainers.image.version=testing.{{date 'YYYYMMDD'}}
             io.artifacthub.package.deprecated=false
             io.artifacthub.package.keywords=${{ env.IMAGE_KEYWORDS }}
             io.artifacthub.package.license=Apache-2.0
             io.artifacthub.package.logo-url=${{ env.IMAGE_LOGO_URL }}
-            io.artifacthub.package.prerelease=false
+            io.artifacthub.package.prerelease=true
             containers.bootc=1
           sep-tags: " "
           sep-annotations: " "
@@ -144,7 +129,7 @@ jobs:
 
       - name: Tag for registry
         run: |
-          for tag in ${{ steps.tags.outputs.tags }}; do
+          for tag in ${{ steps.metadata.outputs.tags }}; do
             podman tag ${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }} ${{ env.IMAGE_NAME }}:${tag}
           done
 
@@ -166,7 +151,7 @@ jobs:
         with:
           registry: ${{ env.IMAGE_REGISTRY }}
           image: ${{ env.IMAGE_NAME }}
-          tags: ${{ steps.tags.outputs.tags }}
+          tags: ${{ steps.metadata.outputs.tags }}
           username: ${{ env.REGISTRY_USER }}
           password: ${{ env.REGISTRY_PASSWORD }}
 
@@ -181,33 +166,10 @@ jobs:
       #   if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
       #   run: |
       #     IMAGE_FULL="${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}"
-      #     for tag in ${{ steps.tags.outputs.tags }}; do
+      #     for tag in ${{ steps.metadata.outputs.tags }}; do
       #       cosign sign -y --key env://COSIGN_PRIVATE_KEY $IMAGE_FULL:${tag}
       #     done
       #   env:
       #     TAGS: ${{ steps.push.outputs.digest }}
       #     COSIGN_EXPERIMENTAL: false
       #     COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
-
-      # OPTIONAL: SBOM Attestation
-      # Attaches SBOM (Software Bill of Materials) to your signed image for supply chain security.
-      # Requires image signing to be enabled first (see above).
-      # To enable:
-      #   1. First enable image signing (see above section)
-      #   2. Uncomment the "Add SBOM Attestation" step below
-      # Documentation: https://slsa.dev/spec/v1.0/requirements#provenance-available
-
-      # - name: Add SBOM Attestation
-      #   if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
-      #   env:
-      #     IMAGE: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
-      #     DIGEST: ${{ steps.push.outputs.digest }}
-      #     COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
-      #     SBOM_OUTPUT: ${{ steps.generate-sbom.outputs.OUTPUT_PATH }}
-      #   run: |
-      #     cd "$(dirname "$SBOM_OUTPUT")"
-      #     cosign attest -y \
-      #       --predicate "$(basename "$SBOM_OUTPUT")" \
-      #       --type spdxjson \
-      #       --key env://COSIGN_PRIVATE_KEY \
-      #       "${IMAGE}@${DIGEST}"

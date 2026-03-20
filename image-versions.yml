@@ -3,6 +3,12 @@ images:
     image: ghcr.io/ublue-os/silverblue-main
     tag: latest
     digest: sha256:c2ea2411fcab64e9dda37159e2922801bd57c632672737c6d3e9ae008b56d430
+  - name: silverblue-main-next
+    image: ghcr.io/ublue-os/silverblue-main
+    tag: next
+    # Placeholder: Renovate will update this to the actual digest once the :next tag exists upstream.
+    # The :next tag tracks the upcoming (pre-release) Fedora version.
+    digest: sha256:c2ea2411fcab64e9dda37159e2922801bd57c632672737c6d3e9ae008b56d430
   - name: common
     image: ghcr.io/projectbluefin/common
     tag: latest

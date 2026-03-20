@@ -29,11 +29,12 @@
 # 2. Base Image (silverblue-main):
 #    - Fedora version and digest are controlled by FEDORA_MAJOR_VERSION and
 #      BASE_IMAGE_DIGEST build args. These are set per stream:
-#        - stable: pinned Fedora version (see image-versions.yml)
-#        - latest: ghcr.io/ublue-os/silverblue-main:latest (see image-versions.yml)
-#        - beta:   ghcr.io/ublue-os/silverblue-main:beta (see image-versions.yml)
+#        - stable / stable-daily: pinned to silverblue-main:latest (see image-versions.yml)
+#        - testing: same base, built more frequently
+#        - next:    silverblue-main:next (see image-versions.yml)
 #
 # Image digests in image-versions.yml are automatically updated by Renovate.
+# Stream definitions: https://docs.projectbluefin.io/blog/unifying-bluefin/
 #
 # See: https://docs.projectbluefin.io/contributing/ for architecture diagram
 ###############################################################################

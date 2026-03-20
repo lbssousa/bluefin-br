@@ -1,35 +1,25 @@
 ---
-# Builds the "stable" and "stable-daily" image streams.
+# Builds the "next" image stream (previously known as "beta").
 #
 # Tag scheme (mirrors Bluefin, see https://docs.projectbluefin.io/blog/unifying-bluefin/):
-#   stable-daily        - every daily build from the stable base
-#   stable-daily.YYYYMMDD
-#   stable              - weekly "promoted" stable build (every Tuesday)
-#   stable.YYYYMMDD
+#   next                - weekly build from the next Fedora release (pre-release / rawhide)
+#   next.YYYYMMDD
 #
-name: Build stable image
+# Requires "silverblue-main-next" in image-versions.yml pointing to the next Fedora base image.
+#
+name: Build next image
 on:
-  pull_request:
-    branches:
-      - main
-    paths-ignore:
-      - "**/README.md"
-      - ".github/workflows/*validate*.yml"
   schedule:
-    - cron: '0 1 * * *'    # 01:00 UTC daily  → produces stable-daily
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - "**/README.md"
+    - cron: '50 5 * * SUN'   # 05:50 UTC every Sunday (same cadence as Bluefin beta)
   workflow_dispatch:
 
 env:
-  IMAGE_DESC: "Bluefin para o Brasil"
-  IMAGE_KEYWORDS: "bootc,ublue,universal-blue,bluefin,brasil,pt-br"
+  IMAGE_DESC: "Bluefin para o Brasil (next)"
+  IMAGE_KEYWORDS: "bootc,ublue,universal-blue,bluefin,brasil,pt-br,next"
   IMAGE_LOGO_URL: "https://avatars.githubusercontent.com/u/120078124?s=200&v=4"
   IMAGE_NAME: "${{ github.event.repository.name }}"
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
+  DEFAULT_TAG: "next"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
@@ -69,30 +59,14 @@ jobs:
 
       - name: Read image versions
         run: |
-          BASE_IMAGE_DIGEST=$(yq -r '.images[] | select(.name == "silverblue-main") | .digest' image-versions.yml)
+          BASE_IMAGE_DIGEST=$(yq -r '.images[] | select(.name == "silverblue-main-next") | .digest' image-versions.yml)
           COMMON_IMAGE_DIGEST=$(yq -r '.images[] | select(.name == "common") | .digest' image-versions.yml)
           BREW_IMAGE_DIGEST=$(yq -r '.images[] | select(.name == "brew") | .digest' image-versions.yml)
-          FEDORA_MAJOR_VERSION=$(yq -r '.images[] | select(.name == "silverblue-main") | .tag' image-versions.yml)
+          FEDORA_MAJOR_VERSION=$(yq -r '.images[] | select(.name == "silverblue-main-next") | .tag' image-versions.yml)
           echo "BASE_IMAGE_DIGEST=${BASE_IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "COMMON_IMAGE_DIGEST=${COMMON_IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "BREW_IMAGE_DIGEST=${BREW_IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "FEDORA_MAJOR_VERSION=${FEDORA_MAJOR_VERSION}" >> $GITHUB_ENV
-
-      - name: Determine tags
-        id: tags
-        run: |
-          # Every run produces a stable-daily tag.
-          # On Tuesdays (schedule) or workflow_dispatch we also promote to stable.
-          DATE=$(date -u +%Y%m%d)
-          TODAY=$(date -u +%A)
-          TAGS="stable-daily stable-daily.${DATE}"
-          if [[ "${{ github.event_name }}" == "schedule" && "${TODAY}" == "Tuesday" ]] || \
-             [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            TAGS="${TAGS} stable stable.${DATE}"
-          fi
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-          # Use stable-daily as the primary build tag
-          echo "DEFAULT_TAG=stable-daily" >> $GITHUB_ENV
 
       - name: Get current date
         id: date
@@ -103,10 +77,8 @@ jobs:
         id: metadata
         with:
           tags: |
-            type=raw,value=stable-daily
-            type=raw,value=stable-daily.{{date 'YYYYMMDD'}}
-            type=sha,enable=${{ github.event_name == 'pull_request' }}
-            type=ref,event=pr
+            type=raw,value=next
+            type=raw,value=next.{{date 'YYYYMMDD'}}
           labels: |
             io.artifacthub.package.readme-url=https://raw.githubusercontent.com/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}/${{ github.sha }}/README.md
             org.opencontainers.image.created=${{ steps.date.outputs.date }}
@@ -116,12 +88,12 @@ jobs:
             org.opencontainers.image.title=${{ env.IMAGE_NAME }}
             org.opencontainers.image.url=https://github.com/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}/tree/${{ github.sha }}
             org.opencontainers.image.vendor=${{ github.repository_owner }}
-            org.opencontainers.image.version=stable-daily.{{date 'YYYYMMDD'}}
+            org.opencontainers.image.version=next.{{date 'YYYYMMDD'}}
             io.artifacthub.package.deprecated=false
             io.artifacthub.package.keywords=${{ env.IMAGE_KEYWORDS }}
             io.artifacthub.package.license=Apache-2.0
             io.artifacthub.package.logo-url=${{ env.IMAGE_LOGO_URL }}
-            io.artifacthub.package.prerelease=false
+            io.artifacthub.package.prerelease=true
             containers.bootc=1
           sep-tags: " "
           sep-annotations: " "
@@ -144,13 +116,12 @@ jobs:
 
       - name: Tag for registry
         run: |
-          for tag in ${{ steps.tags.outputs.tags }}; do
+          for tag in ${{ steps.metadata.outputs.tags }}; do
             podman tag ${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }} ${{ env.IMAGE_NAME }}:${tag}
           done
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
-        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -158,7 +129,6 @@ jobs:
 
       - name: Push To GHCR
         uses: redhat-actions/push-to-registry@5ed88d269cf581ea9ef6dd6806d01562096bee9c # v2
-        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         id: push
         env:
           REGISTRY_USER: ${{ github.actor }}
@@ -166,7 +136,7 @@ jobs:
         with:
           registry: ${{ env.IMAGE_REGISTRY }}
           image: ${{ env.IMAGE_NAME }}
-          tags: ${{ steps.tags.outputs.tags }}
+          tags: ${{ steps.metadata.outputs.tags }}
           username: ${{ env.REGISTRY_USER }}
           password: ${{ env.REGISTRY_PASSWORD }}
 
@@ -175,39 +145,14 @@ jobs:
 
       # - name: Install Cosign
       #   uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
-      #   if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
       #
       # - name: Sign container image
-      #   if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
       #   run: |
       #     IMAGE_FULL="${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}"
-      #     for tag in ${{ steps.tags.outputs.tags }}; do
+      #     for tag in ${{ steps.metadata.outputs.tags }}; do
       #       cosign sign -y --key env://COSIGN_PRIVATE_KEY $IMAGE_FULL:${tag}
       #     done
       #   env:
       #     TAGS: ${{ steps.push.outputs.digest }}
       #     COSIGN_EXPERIMENTAL: false
       #     COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
-
-      # OPTIONAL: SBOM Attestation
-      # Attaches SBOM (Software Bill of Materials) to your signed image for supply chain security.
-      # Requires image signing to be enabled first (see above).
-      # To enable:
-      #   1. First enable image signing (see above section)
-      #   2. Uncomment the "Add SBOM Attestation" step below
-      # Documentation: https://slsa.dev/spec/v1.0/requirements#provenance-available
-
-      # - name: Add SBOM Attestation
-      #   if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
-      #   env:
-      #     IMAGE: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
-      #     DIGEST: ${{ steps.push.outputs.digest }}
-      #     COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
-      #     SBOM_OUTPUT: ${{ steps.generate-sbom.outputs.OUTPUT_PATH }}
-      #   run: |
-      #     cd "$(dirname "$SBOM_OUTPUT")"
-      #     cosign attest -y \
-      #       --predicate "$(basename "$SBOM_OUTPUT")" \
-      #       --type spdxjson \
-      #       --key env://COSIGN_PRIVATE_KEY \
-      #       "${IMAGE}@${DIGEST}"
