@@ -23,16 +23,31 @@
 #
 # 1. Context Stage (ctx) - Combines resources from:
 #    - Local build scripts and custom files
-#    - @projectbluefin/common - Desktop configuration shared with Aurora 
+#    - @projectbluefin/common - Desktop configuration shared with Aurora
 #    - @ublue-os/brew - Homebrew integration
 #
-# 2. Base Image Options:
-#    - `ghcr.io/ublue-os/silverblue-main:latest` (Fedora and GNOME)
-#    - `ghcr.io/ublue-os/base-main:latest` (Fedora and no desktop 
-#    - `quay.io/centos-bootc/centos-bootc:stream10 (CentOS-based)` 
+# 2. Base Image (silverblue-main):
+#    - Fedora version and digest are controlled by FEDORA_MAJOR_VERSION and
+#      BASE_IMAGE_DIGEST build args. These are set per stream:
+#        - stable: pinned Fedora version (see image-versions.yml)
+#        - latest: ghcr.io/ublue-os/silverblue-main:latest (see image-versions.yml)
+#        - beta:   ghcr.io/ublue-os/silverblue-main:beta (see image-versions.yml)
+#
+# Image digests in image-versions.yml are automatically updated by Renovate.
 #
 # See: https://docs.projectbluefin.io/contributing/ for architecture diagram
 ###############################################################################
+
+# ARG values are updated automatically by Renovate via image-versions.yml
+ARG COMMON_IMAGE="ghcr.io/projectbluefin/common:latest"
+ARG COMMON_IMAGE_DIGEST="sha256:9409d0c08bf76bdfef52812db61a68453b20b23b52042e810a447ada3c72c9c1"
+ARG BREW_IMAGE="ghcr.io/ublue-os/brew:latest"
+ARG BREW_IMAGE_DIGEST="sha256:fef8b4728cb042f6b69ad9be90a43095261703103fe6c0735c9d6f035065c052"
+ARG FEDORA_MAJOR_VERSION="latest"
+ARG BASE_IMAGE_DIGEST="sha256:c2ea2411fcab64e9dda37159e2922801bd57c632672737c6d3e9ae008b56d430"
+
+FROM ${COMMON_IMAGE}@${COMMON_IMAGE_DIGEST} AS common
+FROM ${BREW_IMAGE}@${BREW_IMAGE_DIGEST} AS brew
 
 # Context stage - combine local and imported OCI container resources
 FROM scratch AS ctx
@@ -40,15 +55,14 @@ FROM scratch AS ctx
 COPY build /build
 COPY custom /custom
 # Copy from OCI containers to distinct subdirectories to avoid conflicts
-# Note: Renovate can automatically update these :latest tags to SHA-256 digests for reproducibility
-COPY --from=ghcr.io/projectbluefin/common:latest@sha256:b8fe93b16674a547b4cf38493af19caa484d9575956fc3be04ca3d10faec23ff /system_files /oci/common
-COPY --from=ghcr.io/ublue-os/brew:latest@sha256:ca91068f51ce663d495ccfc829352d6621ec95f6c7db447ade55023b222f9762 /system_files /oci/brew
+COPY --from=common /system_files /oci/common
+COPY --from=brew /system_files /oci/brew
 
 # Base Image - GNOME included
-FROM ghcr.io/ublue-os/silverblue-main:latest@sha256:f8d5fd28aa7bb0ed9e17e98e4f9fb174b6961a2dc4a3113b78c5dff4af5bdf6f
+FROM ghcr.io/ublue-os/silverblue-main:${FEDORA_MAJOR_VERSION}@${BASE_IMAGE_DIGEST}
 
 ## Alternative base images, no desktop included (uncomment to use):
-# FROM ghcr.io/ublue-os/base-main:latest    
+# FROM ghcr.io/ublue-os/base-main:latest
 # FROM quay.io/centos-bootc/centos-bootc:stream10
 
 ## Alternative GNOME OS base image (uncomment to use):
