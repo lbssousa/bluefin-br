@@ -85,9 +85,12 @@ UTILITY_RPM="${ESCPR_BUILD_DIR}/epson-printer-utility.x86_64.rpm"
 curl -L --fail --output "${UTILITY_RPM}" \
     "${UTILITY_RPM_URL}"
 
-# Install the binary RPM; use --nodeps to handle any LSB compatibility shim
-# requirements that are not present on modern Fedora
-rpm -i --nodeps "${UTILITY_RPM}"
+# Install the binary RPM:
+# --nodeps   : skip dependency checks (LSB compatibility shim not present on modern Fedora)
+# --nodigest : skip payload-digest verification; RPM 4.19+ (Fedora 40+) rejects
+#              packages built without a SHA-256 payload digest header, which
+#              applies to this older Epson binary RPM
+rpm -i --nodeps --nodigest "${UTILITY_RPM}"
 
 echo "::endgroup::"
 
