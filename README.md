@@ -1,26 +1,26 @@
-# finpilot
+# bluefin-br
 
-A template for building custom bootc operating system images based on the lessons from [Universal Blue](https://universal-blue.org/) and [Bluefin](https://projectbluefin.io). It is designed to be used manually, but is optimized to be bootstraped by GitHub Copilot. After set up you'll have your own custom Linux. 
+A custom Bluefin-based bootc operating system image for Brazilian users, built on [Universal Blue](https://universal-blue.org/) and [Bluefin](https://projectbluefin.io). This image is identical to Bluefin but includes [BigLinux Parental Controls](https://github.com/biglinux/big-parental-controls) for ECA Digital (Lei 15.211/2025) compliance — baked into the base image.
 
-This template uses the **multi-stage build architecture** from , combining resources from multiple OCI containers for modularity and maintainability. See the [Architecture](#architecture) section below for details.
+This image uses the **multi-stage build architecture** from @projectbluefin/distroless, combining resources from multiple OCI containers for modularity and maintainability. See the [Architecture](#architecture) section below for details.
 
-**Unlike previous templates, you are not modifying Bluefin and making changes.**: You are assembling your own Bluefin in the same exact way that Bluefin, Aurora, and Bluefin LTS are built. This is way more flexible and better for everyone since the image-agnostic and desktop things we love about Bluefin lives in @projectbluefin/common. 
+## What Makes bluefin-br Different?
 
- Instead, you create your own OS repository based on this template, allowing full customization while leveraging Bluefin's robust build system and shared components.
+Here are the changes from Bluefin. This image is based on [Bluefin](https://projectbluefin.io) and includes these customizations:
 
-> Be the one who moves, not the one who is moved.
+### Added Packages (Build-time)
+- **BigLinux Parental Controls** (`big-parental-controls`): GTK4 + libadwaita parental controls suite for supervised accounts, web filtering, screen time limits, and ECA Digital age-range signaling — all local-first, no cloud required.
+- **Runtime dependencies**: `python3-gobject`, `gtk4`, `libadwaita`, `malcontent`, `accountsservice`, `polkit`, `acl`, `nftables`
 
-## Guided Copilot Mode
+### Enabled Services
+- `big-parental-daemon.service` — Rust D-Bus daemon for ECA Digital age-range signaling
+- `big-parental-dns-restore.service` — Restores nftables DNS rules at boot
+- `big-parental-time-check.timer` — Periodic screen time enforcement
 
-Here are the steps to guide copilot to make your own repo, or just use it like a regular image template.
+### Configuration Changes
+- Based on `ghcr.io/ublue-os/silverblue-main:latest` — identical to Bluefin's base
 
-1. Click the green "Use this as a template" button and create a new repository
-2. Select your owner, pick a repo name for your OS, and a description
-3. In the "Jumpstart your project with Copilot (optional)" add this, modify to your liking:
-
-```
-Use @projectbluefin/finpilot as a template, name the OS the repository name. Ensure the entire operating system is bootstrapped. Ensure all github actions are enabled and running.  Ensure the README has the github setup instructions for cosign and the other steps required to finish the task.
-```
+*Last updated: 2025-03-20*
 
 ## What's Included
 
@@ -67,7 +67,7 @@ Click "Use this template" to create a new repository from this template.
 
 ### 2. Rename the Project
 
-Important: Change `finpilot` to your repository name in these 6 files:
+Important: Change `bluefin-br` to your repository name in these 6 files:
 
 1. `Containerfile` (line 4): `# Name: your-repo-name`
 2. `Justfile` (line 1): `export image_name := env("IMAGE_NAME", "your-repo-name")`
@@ -118,7 +118,7 @@ All changes should be made via pull requests:
 
 Switch to your image:
 ```bash
-sudo bootc switch ghcr.io/your-username/your-repo-name:stable
+sudo bootc switch ghcr.io/lbssousa/bluefin-br:stable
 sudo systemctl reboot
 ```
 
@@ -263,7 +263,7 @@ Your workflow will:
 
 Users can verify your images with:
 ```bash
-cosign verify --key cosign.pub ghcr.io/your-username/your-repo-name:stable
+cosign verify --key cosign.pub ghcr.io/lbssousa/bluefin-br:stable
 ```
 
 ## Detailed Guides
