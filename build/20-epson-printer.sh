@@ -64,6 +64,10 @@ pushd "${ESCPR_BUILD_DIR}"
   cd "epson-inkjet-printer-escpr-${ESCPR_VERSION}"
 
   autoreconf -vif
+  # GCC 14 (Fedora 41+) promotes -Wimplicit-function-declaration to an error;
+  # the Epson source predates this strictness. Suppress only that warning to
+  # keep the rest of -Wall active.
+  CFLAGS="${CFLAGS:--O2} -Wno-implicit-function-declaration" \
   ./configure \
       --prefix=/usr \
       --with-cupsfilterdir=/usr/lib/cups/filter \
