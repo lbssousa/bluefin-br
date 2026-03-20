@@ -1,0 +1,205 @@
+---
+name: Check Epson Package Updates
+on:
+  schedule:
+    - cron: '0 8 * * 1'  # Every Monday at 08:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check_updates:
+    name: Check for Epson package updates
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v5
+
+      - name: Check epson-inkjet-printer-escpr update
+        id: check_escpr
+        run: |
+          set -euo pipefail
+
+          # Redirect URL from Epson's download portal for ESC/P-R source RPM
+          # Parameters:
+          #   LG2=JA  - Language (Japanese site, but works globally)
+          #   CN2=US  - Country
+          #   CTI=176 - Content type ID for epson-inkjet-printer-escpr source RPM
+          #   PRN=... - Product name description
+          #   OSC=LX  - OS code for Linux
+          #   DL      - Trigger download redirect
+          REDIRECT_URL="https://download.ebz.epson.net/dsc/du/02/DriverDownloadInfo.do?LG2=JA&CN2=US&CTI=176&PRN=Linux%20src.rpm%20package&OSC=LX&DL"
+
+          # Follow redirects to find the current download URL
+          FINAL_URL=$(curl --silent --location --head --max-redirs 10 \
+            --write-out '%{url_effective}' \
+            --output /dev/null \
+            "${REDIRECT_URL}" 2>/dev/null || true)
+
+          if [ -z "${FINAL_URL}" ] || [[ "${FINAL_URL}" == *"DriverDownloadInfo"* ]]; then
+            echo "Could not resolve redirect for escpr - skipping"
+            echo "new_url=" >> "${GITHUB_OUTPUT}"
+            echo "new_version=" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          FILENAME=$(basename "${FINAL_URL}")
+          NEW_VERSION=$(echo "${FILENAME}" | grep -oP '\d+\.\d+\.\d+' | head -1)
+          if [ -z "${NEW_VERSION}" ]; then
+            echo "Could not extract version from filename: ${FILENAME}"
+            echo "new_url=" >> "${GITHUB_OUTPUT}"
+            echo "new_version=" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          CURRENT_VERSION=$(grep 'ESCPR_VERSION=' build/20-epson-printer.sh | head -1 | grep -oP '\d+\.\d+\.\d+')
+          echo "Current escpr version: ${CURRENT_VERSION}"
+          echo "Available escpr version: ${NEW_VERSION}"
+
+          if [ "${NEW_VERSION}" != "${CURRENT_VERSION}" ]; then
+            echo "new_url=${FINAL_URL}" >> "${GITHUB_OUTPUT}"
+            echo "new_version=${NEW_VERSION}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "escpr is up to date (${CURRENT_VERSION})"
+            echo "new_url=" >> "${GITHUB_OUTPUT}"
+            echo "new_version=" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Check epson-printer-utility update
+        id: check_utility
+        run: |
+          set -euo pipefail
+
+          # Redirect URL from Epson's download portal for printer utility RPM 64-bit
+          # Parameters:
+          #   LG2=JA  - Language (Japanese site, but works globally)
+          #   CN2=US  - Country
+          #   CTI=177 - Content type ID for epson-printer-utility x86_64 RPM
+          #   PRN=... - Product name description
+          #   OSC=LX  - OS code for Linux
+          #   DL      - Trigger download redirect
+          REDIRECT_URL="https://download.ebz.epson.net/dsc/du/02/DriverDownloadInfo.do?LG2=JA&CN2=US&CTI=177&PRN=Linux%20rpm%2064bit%20package&OSC=LX&DL"
+
+          # Follow redirects to find the current download URL
+          FINAL_URL=$(curl --silent --location --head --max-redirs 10 \
+            --write-out '%{url_effective}' \
+            --output /dev/null \
+            "${REDIRECT_URL}" 2>/dev/null || true)
+
+          if [ -z "${FINAL_URL}" ] || [[ "${FINAL_URL}" == *"DriverDownloadInfo"* ]]; then
+            echo "Could not resolve redirect for printer-utility - skipping"
+            echo "new_url=" >> "${GITHUB_OUTPUT}"
+            echo "new_version=" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          FILENAME=$(basename "${FINAL_URL}")
+          NEW_VERSION=$(echo "${FILENAME}" | grep -oP '\d+\.\d+\.\d+' | head -1)
+          if [ -z "${NEW_VERSION}" ]; then
+            echo "Could not extract version from filename: ${FILENAME}"
+            echo "new_url=" >> "${GITHUB_OUTPUT}"
+            echo "new_version=" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          CURRENT_VERSION=$(grep 'UTILITY_VERSION=' build/20-epson-printer.sh | head -1 | grep -oP '\d+\.\d+\.\d+')
+          echo "Current utility version: ${CURRENT_VERSION}"
+          echo "Available utility version: ${NEW_VERSION}"
+
+          if [ "${NEW_VERSION}" != "${CURRENT_VERSION}" ]; then
+            echo "new_url=${FINAL_URL}" >> "${GITHUB_OUTPUT}"
+            echo "new_version=${NEW_VERSION}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "printer-utility is up to date (${CURRENT_VERSION})"
+            echo "new_url=" >> "${GITHUB_OUTPUT}"
+            echo "new_version=" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Update build script with new versions
+        id: update_script
+        if: steps.check_escpr.outputs.new_version != '' || steps.check_utility.outputs.new_version != ''
+        run: |
+          set -euo pipefail
+
+          CHANGED=false
+
+          # Update escpr if a new version was found
+          if [ -n "${{ steps.check_escpr.outputs.new_version }}" ]; then
+            NEW_VERSION="${{ steps.check_escpr.outputs.new_version }}"
+            NEW_URL="${{ steps.check_escpr.outputs.new_url }}"
+
+            sed -i \
+              "s|ESCPR_VERSION=\"[0-9.]*\"|ESCPR_VERSION=\"${NEW_VERSION}\"|g" \
+              build/20-epson-printer.sh
+            sed -i \
+              "s|ESCPR_SRPM_URL=.*|ESCPR_SRPM_URL=\"${NEW_URL}\"|g" \
+              build/20-epson-printer.sh
+
+            echo "Updated escpr to ${NEW_VERSION}"
+            CHANGED=true
+          fi
+
+          # Update printer-utility if a new version was found
+          if [ -n "${{ steps.check_utility.outputs.new_version }}" ]; then
+            NEW_VERSION="${{ steps.check_utility.outputs.new_version }}"
+            NEW_URL="${{ steps.check_utility.outputs.new_url }}"
+
+            sed -i \
+              "s|UTILITY_VERSION=\"[0-9.]*\"|UTILITY_VERSION=\"${NEW_VERSION}\"|g" \
+              build/20-epson-printer.sh
+            sed -i \
+              "s|UTILITY_RPM_URL=.*|UTILITY_RPM_URL=\"${NEW_URL}\"|g" \
+              build/20-epson-printer.sh
+
+            echo "Updated printer-utility to ${NEW_VERSION}"
+            CHANGED=true
+          fi
+
+          echo "changed=${CHANGED}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build PR body
+        id: pr_body
+        if: steps.update_script.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+
+          BODY="## Epson Package Updates\n\n"
+          BODY+="Automated update of Epson printer software packages.\n\n"
+
+          if [ -n "${{ steps.check_escpr.outputs.new_version }}" ]; then
+            BODY+="### epson-inkjet-printer-escpr\n"
+            BODY+="- **New version**: \`${{ steps.check_escpr.outputs.new_version }}\`\n"
+            BODY+="- **Download URL**: ${{ steps.check_escpr.outputs.new_url }}\n\n"
+          fi
+
+          if [ -n "${{ steps.check_utility.outputs.new_version }}" ]; then
+            BODY+="### epson-printer-utility\n"
+            BODY+="- **New version**: \`${{ steps.check_utility.outputs.new_version }}\`\n"
+            BODY+="- **Download URL**: ${{ steps.check_utility.outputs.new_url }}\n\n"
+          fi
+
+          BODY+="Please review and merge to rebuild the image with the updated Epson packages.\n"
+
+          # Use printf to properly handle newlines in the multiline string
+          {
+            echo "body<<EOF"
+            printf '%b' "${BODY}"
+            echo "EOF"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Create Pull Request
+        if: steps.update_script.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "fix: update Epson printer package versions"
+          title: "fix: update Epson printer software packages"
+          body: ${{ steps.pr_body.outputs.body }}
+          # Fixed branch name intentionally: create-pull-request updates the
+          # existing PR on re-runs rather than opening a duplicate PR.
+          branch: "renovate/epson-printer-updates"
+          labels: "renovate"
+          delete-branch: true

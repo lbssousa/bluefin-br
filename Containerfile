@@ -58,12 +58,13 @@ FROM ghcr.io/ublue-os/silverblue-main:latest@sha256:f8d5fd28aa7bb0ed9e17e98e4f9f
 ## Some bootable images, like Fedora, have /opt symlinked to /var/opt, in order to
 ## make it mutable/writable for users. However, some packages write files to this directory,
 ## thus its contents might be wiped out when bootc deploys an image, making it troublesome for
-## some packages. Eg, google-chrome, docker-desktop.
+## some packages. Eg, google-chrome, docker-desktop, epson-printer-utility.
 ##
-## Uncomment the following line if one desires to make /opt immutable and be able to be used
-## by the package manager.
+## The following line makes /opt an immutable real directory so that packages
+## installed there (such as epson-printer-utility) are included in the image layers
+## and correctly deployed by bootc.
 
-# RUN rm /opt && mkdir /opt
+RUN rm /opt && mkdir /opt
 
 ### MODIFICATIONS
 ## Make modifications desired in your image and install packages by modifying the build scripts.
