@@ -60,7 +60,7 @@
     {
       "description": "Auto-merge digest updates in image-versions.yml",
       "automerge": true,
-      "matchManagers": ["regex"],
+      "matchManagers": ["custom.regex"],
       "matchUpdateTypes": ["digest", "pinDigest"],
       "matchFileNames": ["image-versions.yml"],
       "labels": ["renovate", "automerge"],
