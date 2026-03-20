@@ -69,8 +69,9 @@ install -Dm755 "${BPC_DIR}/src/big-age-signal/target/release/big-parental-daemon
 # Backward-compatibility symlink (big-age-signal → big-parental-daemon)
 ln -sf /usr/lib/big-parental-controls/big-parental-daemon /usr/bin/big-age-signal
 
-# Install Python package into site-packages
-SITE_PACKAGES=$(python3 -c 'import site; print(site.getsitepackages()[0])')
+# Install Python package into system site-packages (not /usr/local which is a symlink on Fedora bootc)
+PYTHON_VER=$(python3 -c 'import sys; print("{}.{}".format(sys.version_info.major, sys.version_info.minor))')
+SITE_PACKAGES="/usr/lib/python${PYTHON_VER}/site-packages"
 install -dm755 "${SITE_PACKAGES}/big_parental_controls"
 cp -r "${BPC_DIR}/src/src/big_parental_controls/"* "${SITE_PACKAGES}/big_parental_controls/"
 
