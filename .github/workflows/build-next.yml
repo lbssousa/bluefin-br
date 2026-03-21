@@ -75,6 +75,22 @@ jobs:
             containerfile: "Containerfile.nvidia"
             image_name_suffix: "-dx-nvidia"
             image_desc: "Bluefin para o Brasil (developer experience + NVIDIA proprietário, next)"
+          - image_flavor: main
+            base_image_name: silverblue
+            image_versions_key: silverblue-main-next
+            akmods_versions_key: "akmods-nvidia-open-main-next"
+            akmods_addons_versions_key: "akmods-main-next"
+            containerfile: "Containerfile.nvidia-open"
+            image_name_suffix: "-nvidia-open"
+            image_desc: "Bluefin para o Brasil (NVIDIA open, next)"
+          - image_flavor: dx
+            base_image_name: silverblue
+            image_versions_key: silverblue-main-next
+            akmods_versions_key: "akmods-nvidia-open-main-next"
+            akmods_addons_versions_key: "akmods-main-next"
+            containerfile: "Containerfile.nvidia-open"
+            image_name_suffix: "-dx-nvidia-open"
+            image_desc: "Bluefin para o Brasil (developer experience + NVIDIA open, next)"
 
     steps:
       - name: Prepare environment
@@ -115,10 +131,10 @@ jobs:
               echo "AKMODS_TAG=${AKMODS_TAG}" >> $GITHUB_ENV
               echo "AKMODS_DIGEST=${AKMODS_DIGEST}" >> $GITHUB_ENV
             fi
-            AKMODS_NVIDIA_LTS_TAG=$(yq -r '.images[] | select(.name == "${{ matrix.akmods_versions_key }}") | .tag' image-versions.yml)
-            AKMODS_NVIDIA_LTS_DIGEST=$(yq -r '.images[] | select(.name == "${{ matrix.akmods_versions_key }}") | .digest' image-versions.yml)
-            echo "AKMODS_NVIDIA_LTS_TAG=${AKMODS_NVIDIA_LTS_TAG}" >> $GITHUB_ENV
-            echo "AKMODS_NVIDIA_LTS_DIGEST=${AKMODS_NVIDIA_LTS_DIGEST}" >> $GITHUB_ENV
+            AKMODS_NVIDIA_TAG=$(yq -r '.images[] | select(.name == "${{ matrix.akmods_versions_key }}") | .tag' image-versions.yml)
+            AKMODS_NVIDIA_DIGEST=$(yq -r '.images[] | select(.name == "${{ matrix.akmods_versions_key }}") | .digest' image-versions.yml)
+            echo "AKMODS_NVIDIA_TAG=${AKMODS_NVIDIA_TAG}" >> $GITHUB_ENV
+            echo "AKMODS_NVIDIA_DIGEST=${AKMODS_NVIDIA_DIGEST}" >> $GITHUB_ENV
           fi
 
       - name: Get current date
@@ -169,8 +185,8 @@ jobs:
             BREW_IMAGE_DIGEST=${{ env.BREW_IMAGE_DIGEST }}
             AKMODS_TAG=${{ env.AKMODS_TAG }}
             AKMODS_DIGEST=${{ env.AKMODS_DIGEST }}
-            AKMODS_NVIDIA_LTS_TAG=${{ env.AKMODS_NVIDIA_LTS_TAG }}
-            AKMODS_NVIDIA_LTS_DIGEST=${{ env.AKMODS_NVIDIA_LTS_DIGEST }}
+            AKMODS_NVIDIA_TAG=${{ env.AKMODS_NVIDIA_TAG }}
+            AKMODS_NVIDIA_DIGEST=${{ env.AKMODS_NVIDIA_DIGEST }}
           oci: false
 
       - name: Tag for registry
