@@ -28,14 +28,13 @@ env:
   BASE_IMAGE_NAME_ROOT: "${{ github.event.repository.name }}"
   DEFAULT_TAG: "next"
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ matrix.image_flavor }}-${{ matrix.base_image_name }}
-  cancel-in-progress: true
-
 jobs:
   build_push:
     name: Build and push image (${{ matrix.image_name_suffix != '' && matrix.image_name_suffix || 'base' }})
     runs-on: ubuntu-24.04
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ matrix.image_flavor }}-${{ matrix.base_image_name }}
+      cancel-in-progress: true
 
     permissions:
       contents: read
