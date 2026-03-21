@@ -7,6 +7,12 @@
 #   stable              - weekly "promoted" stable build (every Tuesday)
 #   stable.YYYYMMDD
 #
+# Image variants built per stream:
+#   bluefin-br              - base image (Silverblue + BR customisations)
+#   bluefin-br-dx           - developer experience variant
+#   bluefin-br-nvidia       - NVIDIA open drivers variant
+#   bluefin-br-dx-nvidia    - DX + NVIDIA open drivers variant
+#
 name: Build stable image
 on:
   pull_request:
@@ -25,19 +31,18 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_DESC: "Bluefin para o Brasil"
   IMAGE_KEYWORDS: "bootc,ublue,universal-blue,bluefin,brasil,pt-br"
   IMAGE_LOGO_URL: "https://avatars.githubusercontent.com/u/120078124?s=200&v=4"
-  IMAGE_NAME: "${{ github.event.repository.name }}"
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
+  BASE_IMAGE_NAME_ROOT: "${{ github.event.repository.name }}"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ matrix.image_flavor }}-${{ matrix.base_image_name }}
   cancel-in-progress: true
 
 jobs:
   build_push:
-    name: Build and push image
+    name: Build and push image (${{ matrix.image_flavor }}${{ matrix.base_image_name == 'silverblue-nvidia-open' && '+nvidia' || '' }})
     runs-on: ubuntu-24.04
 
     permissions:
@@ -45,11 +50,36 @@ jobs:
       packages: write
       id-token: write
 
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image_flavor: main
+            base_image_name: silverblue
+            image_versions_key: silverblue-main
+            image_name_suffix: ""
+            image_desc: "Bluefin para o Brasil"
+          - image_flavor: dx
+            base_image_name: silverblue
+            image_versions_key: silverblue-main
+            image_name_suffix: "-dx"
+            image_desc: "Bluefin para o Brasil (developer experience)"
+          - image_flavor: main
+            base_image_name: silverblue-nvidia-open
+            image_versions_key: silverblue-nvidia-open-main
+            image_name_suffix: "-nvidia"
+            image_desc: "Bluefin para o Brasil (NVIDIA)"
+          - image_flavor: dx
+            base_image_name: silverblue-nvidia-open
+            image_versions_key: silverblue-nvidia-open-main
+            image_name_suffix: "-dx-nvidia"
+            image_desc: "Bluefin para o Brasil (developer experience + NVIDIA)"
+
     steps:
       - name: Prepare environment
         run: |
           echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> ${GITHUB_ENV}
-          echo "IMAGE_NAME=${IMAGE_NAME,,}" >> ${GITHUB_ENV}
+          echo "IMAGE_NAME=${BASE_IMAGE_NAME_ROOT,,}${{ matrix.image_name_suffix }}" >> ${GITHUB_ENV}
 
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
@@ -69,10 +99,10 @@ jobs:
 
       - name: Read image versions
         run: |
-          BASE_IMAGE_DIGEST=$(yq -r '.images[] | select(.name == "silverblue-main") | .digest' image-versions.yml)
+          BASE_IMAGE_DIGEST=$(yq -r '.images[] | select(.name == "${{ matrix.image_versions_key }}") | .digest' image-versions.yml)
           COMMON_IMAGE_DIGEST=$(yq -r '.images[] | select(.name == "common") | .digest' image-versions.yml)
           BREW_IMAGE_DIGEST=$(yq -r '.images[] | select(.name == "brew") | .digest' image-versions.yml)
-          FEDORA_MAJOR_VERSION=$(yq -r '.images[] | select(.name == "silverblue-main") | .tag' image-versions.yml)
+          FEDORA_MAJOR_VERSION=$(yq -r '.images[] | select(.name == "${{ matrix.image_versions_key }}") | .tag' image-versions.yml)
           echo "BASE_IMAGE_DIGEST=${BASE_IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "COMMON_IMAGE_DIGEST=${COMMON_IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "BREW_IMAGE_DIGEST=${BREW_IMAGE_DIGEST}" >> $GITHUB_ENV
@@ -110,7 +140,7 @@ jobs:
           labels: |
             io.artifacthub.package.readme-url=https://raw.githubusercontent.com/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}/${{ github.sha }}/README.md
             org.opencontainers.image.created=${{ steps.date.outputs.date }}
-            org.opencontainers.image.description=${{ env.IMAGE_DESC }}
+            org.opencontainers.image.description=${{ matrix.image_desc }}
             org.opencontainers.image.documentation=https://raw.githubusercontent.com/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}/${{ github.sha }}/README.md
             org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}/blob/${{ github.sha }}/Containerfile
             org.opencontainers.image.title=${{ env.IMAGE_NAME }}
@@ -136,6 +166,8 @@ jobs:
           tags: ${{ env.DEFAULT_TAG }}
           labels: ${{ steps.metadata.outputs.labels }}
           build-args: |
+            BASE_IMAGE_NAME=${{ matrix.base_image_name }}
+            IMAGE_FLAVOR=${{ matrix.image_flavor }}
             FEDORA_MAJOR_VERSION=${{ env.FEDORA_MAJOR_VERSION }}
             BASE_IMAGE_DIGEST=${{ env.BASE_IMAGE_DIGEST }}
             COMMON_IMAGE_DIGEST=${{ env.COMMON_IMAGE_DIGEST }}
