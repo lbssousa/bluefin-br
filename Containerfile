@@ -44,8 +44,10 @@ ARG COMMON_IMAGE="ghcr.io/projectbluefin/common:latest"
 ARG COMMON_IMAGE_DIGEST="sha256:9409d0c08bf76bdfef52812db61a68453b20b23b52042e810a447ada3c72c9c1"
 ARG BREW_IMAGE="ghcr.io/ublue-os/brew:latest"
 ARG BREW_IMAGE_DIGEST="sha256:fef8b4728cb042f6b69ad9be90a43095261703103fe6c0735c9d6f035065c052"
+ARG BASE_IMAGE_NAME="silverblue"
 ARG FEDORA_MAJOR_VERSION="latest"
 ARG BASE_IMAGE_DIGEST="sha256:c2ea2411fcab64e9dda37159e2922801bd57c632672737c6d3e9ae008b56d430"
+ARG IMAGE_FLAVOR="main"
 
 FROM ${COMMON_IMAGE}@${COMMON_IMAGE_DIGEST} AS common
 FROM ${BREW_IMAGE}@${BREW_IMAGE_DIGEST} AS brew
@@ -60,7 +62,7 @@ COPY --from=common /system_files /oci/common
 COPY --from=brew /system_files /oci/brew
 
 # Base Image - GNOME included
-FROM ghcr.io/ublue-os/silverblue-main:${FEDORA_MAJOR_VERSION}@${BASE_IMAGE_DIGEST}
+FROM ghcr.io/ublue-os/${BASE_IMAGE_NAME}-main:${FEDORA_MAJOR_VERSION}@${BASE_IMAGE_DIGEST}
 
 ## Alternative base images, no desktop included (uncomment to use):
 # FROM ghcr.io/ublue-os/base-main:latest
@@ -68,6 +70,10 @@ FROM ghcr.io/ublue-os/silverblue-main:${FEDORA_MAJOR_VERSION}@${BASE_IMAGE_DIGES
 
 ## Alternative GNOME OS base image (uncomment to use):
 # FROM quay.io/gnome_infrastructure/gnome-build-meta:gnomeos-nightly
+
+# Re-declare IMAGE_FLAVOR after FROM so it is available to RUN instructions
+ARG IMAGE_FLAVOR="main"
+ENV IMAGE_FLAVOR=${IMAGE_FLAVOR}
 
 ### /opt
 ## Some bootable images, like Fedora, have /opt symlinked to /var/opt, in order to

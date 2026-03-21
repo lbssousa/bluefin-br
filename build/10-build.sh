@@ -59,6 +59,11 @@ systemctl enable podman.socket
 
 echo "::endgroup::"
 
+# Install DX packages when building the dx image variant
+if [[ "${IMAGE_FLAVOR:-main}" == "dx" ]]; then
+    bash /ctx/build/dx.sh
+fi
+
 # Restore default glob behavior
 shopt -u nullglob
 
