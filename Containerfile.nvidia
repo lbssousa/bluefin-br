@@ -1,0 +1,66 @@
+###############################################################################
+# NVIDIA (PROPRIETARY) VARIANT
+###############################################################################
+# This Containerfile builds the nvidia and dx-nvidia image variants.
+# It extends the standard build by mounting pre-built akmods-nvidia-lts RPMs
+# (traditional/proprietary kernel modules) from ghcr.io/ublue-os/akmods-nvidia-lts
+# and installing the NVIDIA proprietary drivers during the image build.
+#
+# Architecture follows ublue-os/main:
+#   https://github.com/ublue-os/main/blob/main/Containerfile
+###############################################################################
+
+# ARG values are updated automatically by Renovate via image-versions.yml
+ARG COMMON_IMAGE="ghcr.io/projectbluefin/common:latest"
+ARG COMMON_IMAGE_DIGEST="sha256:9409d0c08bf76bdfef52812db61a68453b20b23b52042e810a447ada3c72c9c1"
+ARG BREW_IMAGE="ghcr.io/ublue-os/brew:latest"
+ARG BREW_IMAGE_DIGEST="sha256:fef8b4728cb042f6b69ad9be90a43095261703103fe6c0735c9d6f035065c052"
+ARG BASE_IMAGE_NAME="silverblue"
+ARG FEDORA_MAJOR_VERSION="latest"
+ARG BASE_IMAGE_DIGEST="sha256:c2ea2411fcab64e9dda37159e2922801bd57c632672737c6d3e9ae008b56d430"
+ARG IMAGE_FLAVOR="main"
+ARG AKMODS_NVIDIA_LTS_TAG="main-42"
+ARG AKMODS_NVIDIA_LTS_DIGEST="sha256:58dfba640b905996cc84a99a5cf5f4e3d2b2801089854028febc08bbfe6e9391"
+
+FROM ${COMMON_IMAGE}@${COMMON_IMAGE_DIGEST} AS common
+FROM ${BREW_IMAGE}@${BREW_IMAGE_DIGEST} AS brew
+
+# Pre-built proprietary NVIDIA kernel modules from UBlue
+FROM ghcr.io/ublue-os/akmods-nvidia-lts:${AKMODS_NVIDIA_LTS_TAG}@${AKMODS_NVIDIA_LTS_DIGEST} AS akmods_nvidia_lts
+
+# Context stage - combine local and imported OCI container resources
+FROM scratch AS ctx
+
+COPY build /build
+COPY custom /custom
+# Copy from OCI containers to distinct subdirectories to avoid conflicts
+COPY --from=common /system_files /oci/common
+COPY --from=brew /system_files /oci/brew
+
+# Base Image - same silverblue-main base as the non-nvidia variants
+FROM ghcr.io/ublue-os/${BASE_IMAGE_NAME}-main:${FEDORA_MAJOR_VERSION}@${BASE_IMAGE_DIGEST}
+
+# Re-declare IMAGE_FLAVOR after FROM so it is available to RUN instructions
+ARG IMAGE_FLAVOR="main"
+ENV IMAGE_FLAVOR=${IMAGE_FLAVOR}
+
+# Signal to build scripts that NVIDIA LTS drivers should be installed
+ENV IS_NVIDIA_LTS="true"
+
+### /opt
+RUN rm /opt && mkdir /opt
+
+### MODIFICATIONS
+## The nvidia variant mounts the akmods-nvidia-lts RPMs at /tmp/akmods-nv-rpms.
+## The nvidia-lts.sh script (called from 10-build.sh when IS_NVIDIA_LTS=true)
+## installs the pre-built proprietary NVIDIA kernel modules and userspace drivers.
+
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache \
+    --mount=type=cache,dst=/var/log \
+    --mount=type=tmpfs,dst=/tmp \
+    --mount=type=bind,from=akmods_nvidia_lts,source=/rpms,target=/tmp/akmods-nv-rpms \
+    find /ctx/build -maxdepth 1 -name '[0-9][0-9]-*.sh' -print0 | sort -z | xargs -0 -I{} bash {}
+
+### LINTING
+RUN bootc container lint
