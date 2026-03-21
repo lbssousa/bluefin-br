@@ -17,11 +17,10 @@ jobs:
         uses: dataaxiom/ghcr-cleanup-action@cd0cdb900b5dbf3a6f2cc869f0dbb0b8211f50c4 # v1.0.16
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          # IMPORTANT: Update this to match your image name from Containerfile (line 9)
-          # This should match the "# Name: your-repo-name" comment in your Containerfile
-          # Example: If your Containerfile has "# Name: my-custom-os", use "my-custom-os" here
           packages: bluefin-br
           older-than: 90 days
           delete-orphaned-images: true
-          keep-n-tagged: 7
+          # Keep the last 7 tagged images per stream:
+          #   stable, stable-daily, testing, next  (+ datestamped variants)
+          keep-n-tagged: 28
           keep-n-untagged: 7

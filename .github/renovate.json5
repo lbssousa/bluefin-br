@@ -31,6 +31,17 @@
       datasourceTemplate: 'docker',
       versioningTemplate: 'docker',
     },
+    {
+      customType: 'regex',
+      description: 'Match container image digests in image-versions.yml',
+      managerFilePatterns: [
+        '^image-versions\\.yml$',
+      ],
+      matchStrings: [
+        '- name: (?<depName>[^\\n]+)\\n\\s+image: (?<packageName>[^\\n]+)\\n\\s+tag: ["\']?(?<currentValue>[^\\n"\']+)["\']?\\n\\s+digest: (?<currentDigest>sha256:[a-f0-9]+)',
+      ],
+      datasourceTemplate: 'docker',
+    },
   ],
 
   "packageRules": [
@@ -39,11 +50,19 @@
       "matchUpdateTypes": ["pin", "pinDigest"]
     },
     {
-      "description": "Auto-merge digest updates for base image and trigger build",
+      "description": "Auto-merge digest updates for base images in Containerfile",
       "automerge": true,
       "matchManagers": ["dockerfile"],
       "matchUpdateTypes": ["digest"],
       "matchFileNames": ["Containerfile"],
+      "labels": ["renovate", "automerge"],
+    },
+    {
+      "description": "Auto-merge digest updates in image-versions.yml",
+      "automerge": true,
+      "matchManagers": ["custom.regex"],
+      "matchUpdateTypes": ["digest", "pinDigest"],
+      "matchFileNames": ["image-versions.yml"],
       "labels": ["renovate", "automerge"],
     },
     {
