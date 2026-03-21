@@ -28,14 +28,13 @@ env:
   BASE_IMAGE_NAME_ROOT: "${{ github.event.repository.name }}"
   DEFAULT_TAG: "next"
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ matrix.image_flavor }}-${{ matrix.base_image_name }}
-  cancel-in-progress: true
-
 jobs:
   build_push:
     name: Build and push image (${{ matrix.image_name_suffix != '' && matrix.image_name_suffix || 'base' }})
     runs-on: ubuntu-24.04
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ matrix.image_flavor }}-${{ matrix.base_image_name }}
+      cancel-in-progress: true
 
     permissions:
       contents: read
@@ -74,20 +73,6 @@ jobs:
             containerfile: "Containerfile.nvidia"
             image_name_suffix: "-dx-nvidia"
             image_desc: "Bluefin para o Brasil (developer experience + NVIDIA proprietário, next)"
-          - image_flavor: main
-            base_image_name: silverblue-nvidia-open
-            image_versions_key: silverblue-nvidia-open-main-next
-            akmods_versions_key: ""
-            containerfile: "Containerfile"
-            image_name_suffix: "-nvidia-open"
-            image_desc: "Bluefin para o Brasil (NVIDIA, next)"
-          - image_flavor: dx
-            base_image_name: silverblue-nvidia-open
-            image_versions_key: silverblue-nvidia-open-main-next
-            akmods_versions_key: ""
-            containerfile: "Containerfile"
-            image_name_suffix: "-dx-nvidia-open"
-            image_desc: "Bluefin para o Brasil (developer experience + NVIDIA, next)"
 
     steps:
       - name: Prepare environment

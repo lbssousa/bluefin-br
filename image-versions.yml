@@ -19,16 +19,6 @@ images:
     tag: main-43
     # Renovate will update this digest automatically.
     digest: sha256:4b623c2c1844ddc98575b2de2374bf6c5e3e2ed12d01ac6b77e505c7f2159519
-  - name: silverblue-nvidia-open-main
-    image: ghcr.io/ublue-os/silverblue-nvidia-open-main
-    tag: latest
-    # Renovate will update this digest automatically.
-    digest: sha256:c2ea2411fcab64e9dda37159e2922801bd57c632672737c6d3e9ae008b56d430
-  - name: silverblue-nvidia-open-main-next
-    image: ghcr.io/ublue-os/silverblue-nvidia-open-main
-    tag: next
-    # Placeholder: Renovate will update this to the actual digest once the :next tag exists upstream.
-    digest: sha256:c2ea2411fcab64e9dda37159e2922801bd57c632672737c6d3e9ae008b56d430
   - name: common
     image: ghcr.io/projectbluefin/common
     tag: latest

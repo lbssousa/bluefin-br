@@ -11,8 +11,9 @@
 # These use traditional (non-open) NVIDIA kernel modules from the negativo17
 # fedora-nvidia-lts repository — the latest available in the proprietary track.
 #
-# Based on the ublue-os/main nvidia-install.sh pattern:
-# https://github.com/ublue-os/main/blob/main/build_files/nvidia-install.sh
+# The driver installation is handled by build/nvidia-install.sh (our own script
+# based on the ublue-os/main pattern), which is more robust than calling the
+# script bundled inside the akmods image.
 ###############################################################################
 
 set -eoux pipefail
@@ -33,7 +34,20 @@ MULTILIB=0
 IMAGE_NAME="${IMAGE_NAME}" \
 AKMODNV_PATH="${AKMODS_PATH}" \
 MULTILIB="${MULTILIB}" \
-    "${AKMODS_PATH}/ublue-os/nvidia-install.sh"
+    bash /ctx/build/nvidia-install.sh
+
+# Regenerate the initramfs to include the NVIDIA kernel modules
+# (required for proper NVIDIA driver loading at boot)
+KERNEL_VERSION="$(rpm -q --queryformat="%{evr}.%{arch}" kernel-core)"
+export DRACUT_NO_XATTR=1
+/usr/bin/dracut \
+    --no-hostonly \
+    --kver "${KERNEL_VERSION}" \
+    --reproducible \
+    -v \
+    --add ostree \
+    -f "/lib/modules/${KERNEL_VERSION}/initramfs.img"
+chmod 0600 "/lib/modules/${KERNEL_VERSION}/initramfs.img"
 
 # Add kernel boot arguments to blacklist the nouveau driver and enable
 # NVIDIA DRM kernel mode-setting (required for Wayland)
