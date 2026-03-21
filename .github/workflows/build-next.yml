@@ -73,20 +73,6 @@ jobs:
             containerfile: "Containerfile.nvidia"
             image_name_suffix: "-dx-nvidia"
             image_desc: "Bluefin para o Brasil (developer experience + NVIDIA proprietário, next)"
-          - image_flavor: main
-            base_image_name: silverblue-nvidia-open
-            image_versions_key: silverblue-nvidia-open-main-next
-            akmods_versions_key: ""
-            containerfile: "Containerfile"
-            image_name_suffix: "-nvidia-open"
-            image_desc: "Bluefin para o Brasil (NVIDIA, next)"
-          - image_flavor: dx
-            base_image_name: silverblue-nvidia-open
-            image_versions_key: silverblue-nvidia-open-main-next
-            akmods_versions_key: ""
-            containerfile: "Containerfile"
-            image_name_suffix: "-dx-nvidia-open"
-            image_desc: "Bluefin para o Brasil (developer experience + NVIDIA, next)"
 
     steps:
       - name: Prepare environment
