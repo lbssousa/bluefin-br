@@ -1,6 +1,6 @@
 # bluefin-br
 
-A custom Bluefin-based bootc operating system image for Brazilian users, built on [Universal Blue](https://universal-blue.org/) and [Bluefin](https://projectbluefin.io). This image is identical to Bluefin but includes [BigLinux Parental Controls](https://github.com/biglinux/big-parental-controls) for ECA Digital (Lei 15.211/2025) compliance — baked into the base image.
+A custom Bluefin-based bootc operating system image for Brazilian users, built on [Universal Blue](https://universal-blue.org/) and [Bluefin](https://projectbluefin.io). This image extends Bluefin with [BigLinux Parental Controls](https://github.com/biglinux/big-parental-controls) for ECA Digital (Lei 15.211/2025) compliance, Epson printer drivers and utilities for older printers not compatible with the newer `escpr2` driver, and — as an optional variant — NVIDIA 580.xxx proprietary drivers for video cards no longer supported by the 590.xxx drivers.
 
 This image uses the **multi-stage build architecture** from @projectbluefin/distroless, combining resources from multiple OCI containers for modularity and maintainability. See the [Architecture](#architecture) section below for details.
 
@@ -11,16 +11,27 @@ Here are the changes from Bluefin. This image is based on [Bluefin](https://proj
 ### Added Packages (Build-time)
 - **BigLinux Parental Controls** (`big-parental-controls`): GTK4 + libadwaita parental controls suite for supervised accounts, web filtering, screen time limits, and ECA Digital age-range signaling — all local-first, no cloud required.
 - **Runtime dependencies**: `python3-gobject`, `gtk4`, `libadwaita`, `malcontent`, `accountsservice`, `polkit`, `acl`, `nftables`
+- **Epson Inkjet Printer Driver (ESC/P-R)** (`epson-inkjet-printer-escpr`): Legacy Epson inkjet driver for printers that are **not** compatible with the newer `escpr2` driver. Built from Epson's source RPM for compatibility with modern Fedora. See [Epson Linux support page](https://support.epson.net/linux/Printer/LSB_distribution_pages/en/escpr.php).
+- **Epson Printer Utility** (`epson-printer-utility`): Graphical utility for printer maintenance tasks such as nozzle check, print head cleaning, and ink level monitoring. Installed from Epson's official binary RPM. See [Epson Linux support page](https://support.epson.net/linux/Printer/LSB_distribution_pages/en/utility.php).
 
 ### Enabled Services
 - `big-parental-daemon.service` — Rust D-Bus daemon for ECA Digital age-range signaling
 - `big-parental-dns-restore.service` — Restores nftables DNS rules at boot
 - `big-parental-time-check.timer` — Periodic screen time enforcement
+- `ecbd.service` — Epson Connect Billing Daemon, required by `epson-printer-utility`
+
+### Optional Image Variants
+- **`bluefin-br-nvidia`** / **`bluefin-br-dx-nvidia`**: Includes NVIDIA **580.xxx** proprietary kernel modules and drivers (via `akmods-nvidia-lts`). Use this variant for NVIDIA video cards that are **not** supported by the newer 590.xxx drivers (e.g., older Kepler and Maxwell GPUs dropped from the current driver series). Switch to this image with:
+  ```bash
+  sudo bootc switch ghcr.io/lbssousa/bluefin-br-nvidia:stable
+  ```
+- **`bluefin-br-nvidia-open`** / **`bluefin-br-dx-nvidia-open`**: Includes the latest NVIDIA **590.xxx** open kernel modules (via `akmods-nvidia-open`). Recommended for modern NVIDIA GPUs (Turing/Ampere/Ada/Hopper and newer) supported by the open driver.
 
 ### Configuration Changes
 - Based on `ghcr.io/ublue-os/silverblue-main:latest` — identical to Bluefin's base
+- `/opt` is an immutable real directory (not a symlink to `/var/opt`) so that packages installed there — such as `epson-printer-utility` — are correctly included in the image layers and deployed by bootc.
 
-*Last updated: 2025-03-20*
+*Last updated: 2025-03-21*
 
 ## What's Included
 
