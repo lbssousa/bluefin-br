@@ -66,6 +66,17 @@
       "labels": ["renovate", "automerge"],
     },
     {
+      "description": "Group silverblue-main and akmods-nvidia-lts-main updates to ensure kernel version compatibility. Both images must track the same Fedora release.",
+      "groupName": "ublue-os base and akmods",
+      "matchDepNames": [
+        "silverblue-main",
+        "silverblue-main-next",
+        "akmods-nvidia-lts-main",
+        "akmods-nvidia-lts-main-next",
+      ],
+      "matchFileNames": ["image-versions.yml"],
+    },
+    {
       "description": "Disable automerge for all rechunk updates to allow manual review",
       "matchUpdateTypes": ["major", "minor", "patch", "digest", "pinDigest"],
       "matchPackageNames": ["ghcr.io/hhd-dev/rechunk"],

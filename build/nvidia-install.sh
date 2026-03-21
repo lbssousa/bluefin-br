@@ -28,6 +28,18 @@ source "${AKMODNV_PATH}"/kmods/nvidia-vars
 # diagnostic: list akmods directory
 find "${AKMODNV_PATH}"/
 
+# Verify that the akmods kernel matches the base image kernel to catch
+# version mismatches (e.g. Fedora 42 akmods + Fedora 43 base) early.
+BASE_KERNEL="$(rpm -q --queryformat="%{evr}.%{arch}" kernel-core)"
+if [[ "${BASE_KERNEL}" != "${KERNEL_VERSION}" ]]; then
+    echo "ERROR: Kernel version mismatch between akmods image and base image!"
+    echo "  Base image kernel : ${BASE_KERNEL}"
+    echo "  Akmods kernel     : ${KERNEL_VERSION}"
+    echo "  Update image-versions.yml so that akmods-nvidia-lts-main uses the"
+    echo "  tag matching the current Fedora release of silverblue-main (e.g. main-43)."
+    exit 1
+fi
+
 if ! command -v dnf5 >/dev/null; then
     echo "Requires dnf5... Exiting"
     exit 1
