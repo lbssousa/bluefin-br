@@ -66,7 +66,7 @@
       "labels": ["renovate", "automerge"],
     },
     {
-      "description": "Group silverblue-main, akmods-main, and akmods-nvidia-lts-main updates to ensure kernel version compatibility. All images must track the same Fedora release.",
+      "description": "Group silverblue-main, akmods-main, akmods-nvidia-lts-main, and akmods-nvidia-open-main updates to ensure kernel version compatibility. All images must track the same Fedora release.",
       "groupName": "ublue-os base and akmods",
       "matchDepNames": [
         "silverblue-main",
@@ -75,6 +75,8 @@
         "akmods-main-next",
         "akmods-nvidia-lts-main",
         "akmods-nvidia-lts-main-next",
+        "akmods-nvidia-open-main",
+        "akmods-nvidia-open-main-next",
       ],
       "matchFileNames": ["image-versions.yml"],
     },

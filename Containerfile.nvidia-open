@@ -1,10 +1,10 @@
 ###############################################################################
-# NVIDIA (PROPRIETARY) VARIANT
+# NVIDIA OPEN VARIANT
 ###############################################################################
-# This Containerfile builds the nvidia and dx-nvidia image variants.
-# It extends the standard build by mounting pre-built akmods-nvidia-lts RPMs
-# (traditional/proprietary kernel modules) from ghcr.io/ublue-os/akmods-nvidia-lts
-# and installing the NVIDIA proprietary drivers during the image build.
+# This Containerfile builds the nvidia-open and dx-nvidia-open image variants.
+# It extends the standard build by mounting pre-built akmods-nvidia-open RPMs
+# (open kernel modules) from ghcr.io/ublue-os/akmods-nvidia-open
+# and installing the NVIDIA open drivers during the image build.
 #
 # Architecture follows ublue-os/main:
 #   https://github.com/ublue-os/main/blob/main/Containerfile
@@ -22,7 +22,7 @@ ARG IMAGE_FLAVOR="main"
 ARG AKMODS_TAG="main-43"
 ARG AKMODS_DIGEST="sha256:42a7aee6d4864e1a5b9e9e91e94d1454526d8f19efa8a4c2a5ae8acaaf0fa41e"
 ARG AKMODS_NVIDIA_TAG="main-43"
-ARG AKMODS_NVIDIA_DIGEST="sha256:4b623c2c1844ddc98575b2de2374bf6c5e3e2ed12d01ac6b77e505c7f2159519"
+ARG AKMODS_NVIDIA_DIGEST="sha256:a5d0b809d8c992e439aef13cb6204588c5123a1b9a1c4d6799b017d2068f5811"
 
 FROM ${COMMON_IMAGE}@${COMMON_IMAGE_DIGEST} AS common
 FROM ${BREW_IMAGE}@${BREW_IMAGE_DIGEST} AS brew
@@ -30,8 +30,8 @@ FROM ${BREW_IMAGE}@${BREW_IMAGE_DIGEST} AS brew
 # Common akmods image — provides ublue-os-akmods-addons (SecureBoot MOK enrollment key)
 FROM ghcr.io/ublue-os/akmods:${AKMODS_TAG}@${AKMODS_DIGEST} AS akmods
 
-# Pre-built proprietary NVIDIA kernel modules from UBlue
-FROM ghcr.io/ublue-os/akmods-nvidia-lts:${AKMODS_NVIDIA_TAG}@${AKMODS_NVIDIA_DIGEST} AS akmods_nvidia_lts
+# Pre-built open NVIDIA kernel modules from UBlue
+FROM ghcr.io/ublue-os/akmods-nvidia-open:${AKMODS_NVIDIA_TAG}@${AKMODS_NVIDIA_DIGEST} AS akmods_nvidia_open
 
 # Context stage - combine local and imported OCI container resources
 FROM scratch AS ctx
@@ -49,23 +49,23 @@ FROM ghcr.io/ublue-os/${BASE_IMAGE_NAME}-main:${FEDORA_MAJOR_VERSION}@${BASE_IMA
 ARG IMAGE_FLAVOR="main"
 ENV IMAGE_FLAVOR=${IMAGE_FLAVOR}
 
-# Signal to build scripts that NVIDIA LTS drivers should be installed
-ENV IS_NVIDIA_LTS="true"
+# Signal to build scripts that NVIDIA open drivers should be installed
+ENV IS_NVIDIA_OPEN="true"
 
 ### /opt
 RUN rm /opt && mkdir /opt
 
 ### MODIFICATIONS
-## The nvidia variant mounts the akmods-nvidia-lts RPMs at /tmp/akmods-nv-rpms.
-## The nvidia-lts.sh script (called from 10-build.sh when IS_NVIDIA_LTS=true)
-## installs the pre-built proprietary NVIDIA kernel modules and userspace drivers.
+## The nvidia-open variant mounts the akmods-nvidia-open RPMs at /tmp/akmods-nv-rpms.
+## The nvidia-open.sh script (called from 10-build.sh when IS_NVIDIA_OPEN=true)
+## installs the pre-built open NVIDIA kernel modules and userspace drivers.
 
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
     --mount=type=tmpfs,dst=/tmp \
     --mount=type=bind,from=akmods,source=/rpms/ublue-os,target=/tmp/akmods-addons-rpms \
-    --mount=type=bind,from=akmods_nvidia_lts,source=/rpms,target=/tmp/akmods-nv-rpms \
+    --mount=type=bind,from=akmods_nvidia_open,source=/rpms,target=/tmp/akmods-nv-rpms \
     find /ctx/build -maxdepth 1 -name '[0-9][0-9]-*.sh' -print0 | sort -z | xargs -0 -I{} bash {}
 
 ### LINTING

@@ -69,6 +69,11 @@ if [[ "${IS_NVIDIA_LTS:-false}" == "true" ]]; then
     bash /ctx/build/nvidia-lts.sh
 fi
 
+# Install open NVIDIA drivers when building the nvidia-open image variant
+if [[ "${IS_NVIDIA_OPEN:-false}" == "true" ]]; then
+    bash /ctx/build/nvidia-open.sh
+fi
+
 # Restore default glob behavior
 shopt -u nullglob
 
