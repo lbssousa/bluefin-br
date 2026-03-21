@@ -19,11 +19,16 @@ ARG BASE_IMAGE_NAME="silverblue"
 ARG FEDORA_MAJOR_VERSION="latest"
 ARG BASE_IMAGE_DIGEST="sha256:c2ea2411fcab64e9dda37159e2922801bd57c632672737c6d3e9ae008b56d430"
 ARG IMAGE_FLAVOR="main"
+ARG AKMODS_TAG="main-43"
+ARG AKMODS_DIGEST="sha256:42a7aee6d4864e1a5b9e9e91e94d1454526d8f19efa8a4c2a5ae8acaaf0fa41e"
 ARG AKMODS_NVIDIA_LTS_TAG="main-43"
 ARG AKMODS_NVIDIA_LTS_DIGEST="sha256:4b623c2c1844ddc98575b2de2374bf6c5e3e2ed12d01ac6b77e505c7f2159519"
 
 FROM ${COMMON_IMAGE}@${COMMON_IMAGE_DIGEST} AS common
 FROM ${BREW_IMAGE}@${BREW_IMAGE_DIGEST} AS brew
+
+# Common akmods image — provides ublue-os-akmods-addons (SecureBoot MOK enrollment key)
+FROM ghcr.io/ublue-os/akmods:${AKMODS_TAG}@${AKMODS_DIGEST} AS akmods
 
 # Pre-built proprietary NVIDIA kernel modules from UBlue
 FROM ghcr.io/ublue-os/akmods-nvidia-lts:${AKMODS_NVIDIA_LTS_TAG}@${AKMODS_NVIDIA_LTS_DIGEST} AS akmods_nvidia_lts
@@ -59,6 +64,7 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
     --mount=type=tmpfs,dst=/tmp \
+    --mount=type=bind,from=akmods,source=/rpms/ublue-os,target=/tmp/akmods-addons-rpms \
     --mount=type=bind,from=akmods_nvidia_lts,source=/rpms,target=/tmp/akmods-nv-rpms \
     find /ctx/build -maxdepth 1 -name '[0-9][0-9]-*.sh' -print0 | sort -z | xargs -0 -I{} bash {}
 

@@ -9,11 +9,22 @@ images:
     # Placeholder: Renovate will update this to the actual digest once the :next tag exists upstream.
     # The :next tag tracks the upcoming (pre-release) Fedora version.
     digest: sha256:c2ea2411fcab64e9dda37159e2922801bd57c632672737c6d3e9ae008b56d430
+  - name: akmods-main
+    image: ghcr.io/ublue-os/akmods
+    tag: main-43
+    # Renovate will update this digest automatically.
+    # Must match the same Fedora version as silverblue-main and akmods-nvidia-lts-main.
+    digest: sha256:42a7aee6d4864e1a5b9e9e91e94d1454526d8f19efa8a4c2a5ae8acaaf0fa41e
   - name: akmods-nvidia-lts-main
     image: ghcr.io/ublue-os/akmods-nvidia-lts
     tag: main-43
     # Renovate will update this digest automatically.
     digest: sha256:4b623c2c1844ddc98575b2de2374bf6c5e3e2ed12d01ac6b77e505c7f2159519
+  - name: akmods-main-next
+    image: ghcr.io/ublue-os/akmods
+    tag: main-43
+    # Placeholder: Renovate will update this to the actual digest once the :next tag exists upstream.
+    digest: sha256:42a7aee6d4864e1a5b9e9e91e94d1454526d8f19efa8a4c2a5ae8acaaf0fa41e
   - name: akmods-nvidia-lts-main-next
     image: ghcr.io/ublue-os/akmods-nvidia-lts
     tag: main-43
