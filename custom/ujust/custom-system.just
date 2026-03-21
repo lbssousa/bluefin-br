@@ -2,8 +2,81 @@
 #######################
 ### custom-system.just
 #######################
-## Example system configuration commands
-## These are simplified examples adapted from Bluefin
+
+# Toggle between bluefin-br and the Developer Experience (overrides Bluefin default for bluefin-br naming)
+[group('System')]
+toggle-devmode:
+    #!/usr/bin/env bash
+    set -e
+    IMAGE_INFO_FILE="${IMAGE_INFO_FILE:-/usr/share/ublue-os/image-info.json}"
+    IMAGE_NAME="$(jq -rc '."image-name"' "${IMAGE_INFO_FILE}")"
+    IMAGE_REF="$(jq -rc '."image-ref"' "${IMAGE_INFO_FILE}" | sed "s/.*ghcr/ghcr/")"
+    CURRENT_IMAGE="${IMAGE_REF}:$(jq -rc '."image-tag"' "${IMAGE_INFO_FILE}")"
+    set +e
+
+    if [[ "${IMAGE_NAME}" =~ -dx(-|$) ]] ; then
+        gum confirm "Would you like to disable developer mode?" || exit 0
+        echo "Rebasing to a non developer image"
+        NEW_IMAGE="$(sed "s/-dx//" <<< "${CURRENT_IMAGE}")"
+        pkexec bootc switch --enforce-container-sigpolicy "${NEW_IMAGE}"
+        exit 0
+    fi
+
+    gum confirm "Would you like to enable developer mode?" || exit 0
+    echo "Rebasing to a developer image"
+    NEW_IMAGE="$(sed "s|/bluefin-br|/bluefin-br-dx|" <<< "${CURRENT_IMAGE}")"
+    pkexec bootc switch --enforce-container-sigpolicy "${NEW_IMAGE}"
+    if gum confirm "Do you want to also install the default development flatpaks?" ; then
+        ADD_DEVMODE=1 ujust install-system-flatpaks 0 1
+    fi
+    if gum confirm "Do you want to install extra monospace fonts?" ; then
+        brew bundle install --file=/usr/share/ublue-os/homebrew/fonts.Brewfile
+    fi
+    echo "Use ujust dx-group to add your user to the correct groups and complete the installation after rebooting into the development image"
+
+# Switch between base, nvidia (proprietary), and nvidia-open image variants
+[group('System')]
+toggle-nvidia:
+    #!/usr/bin/env bash
+    set -e
+    IMAGE_INFO_FILE="${IMAGE_INFO_FILE:-/usr/share/ublue-os/image-info.json}"
+    IMAGE_NAME="$(jq -rc '."image-name"' "${IMAGE_INFO_FILE}")"
+    IMAGE_REF="$(jq -rc '."image-ref"' "${IMAGE_INFO_FILE}" | sed "s/.*ghcr/ghcr/")"
+    CURRENT_IMAGE="${IMAGE_REF}:$(jq -rc '."image-tag"' "${IMAGE_INFO_FILE}")"
+
+    if [[ "${IMAGE_NAME}" =~ -nvidia-open ]]; then
+        CURRENT_VARIANT="nvidia-open"
+    elif [[ "${IMAGE_NAME}" =~ -nvidia ]]; then
+        CURRENT_VARIANT="nvidia"
+    else
+        CURRENT_VARIANT="base"
+    fi
+
+    echo "Current variant: ${CURRENT_VARIANT}"
+    TARGET=$(gum choose --header "Select target NVIDIA variant:" "base" "nvidia" "nvidia-open")
+
+    if [[ "${TARGET}" == "${CURRENT_VARIANT}" ]]; then
+        echo "Already on the ${TARGET} variant. No changes made."
+        exit 0
+    fi
+
+    # Strip any existing nvidia suffix to get the base image path
+    BASE_IMAGE="$(sed -E 's/-nvidia(-open)?//' <<< "${CURRENT_IMAGE}")"
+
+    case "${TARGET}" in
+        "base")
+            NEW_IMAGE="${BASE_IMAGE}"
+            ;;
+        "nvidia")
+            NEW_IMAGE="$(sed "s/:/-nvidia:/" <<< "${BASE_IMAGE}")"
+            ;;
+        "nvidia-open")
+            NEW_IMAGE="$(sed "s/:/-nvidia-open:/" <<< "${BASE_IMAGE}")"
+            ;;
+    esac
+
+    gum confirm "Switch to ${NEW_IMAGE}?" || exit 0
+    pkexec bootc switch --enforce-container-sigpolicy "${NEW_IMAGE}"
 
 # Run a system benchmark (requires stress-ng from Homebrew)
 [group('System')]
