@@ -10,6 +10,8 @@
 # Image variants built per stream:
 #   bluefin-br              - base image (Silverblue + BR customisations)
 #   bluefin-br-dx           - developer experience variant
+#   bluefin-br-nvidia       - NVIDIA proprietary drivers variant
+#   bluefin-br-dx-nvidia    - DX + NVIDIA proprietary drivers variant
 #   bluefin-br-nvidia-open  - NVIDIA open drivers variant
 #   bluefin-br-dx-nvidia-open - DX + NVIDIA open drivers variant
 #
@@ -32,7 +34,7 @@ concurrency:
 
 jobs:
   build_push:
-    name: Build and push image (${{ matrix.image_flavor }}${{ matrix.base_image_name == 'silverblue-nvidia-open' && '+nvidia' || '' }})
+    name: Build and push image (${{ matrix.image_name_suffix != '' && matrix.image_name_suffix || 'base' }})
     runs-on: ubuntu-24.04
 
     permissions:
@@ -47,21 +49,43 @@ jobs:
           - image_flavor: main
             base_image_name: silverblue
             image_versions_key: silverblue-main-next
+            akmods_versions_key: ""
+            containerfile: "Containerfile"
             image_name_suffix: ""
             image_desc: "Bluefin para o Brasil (next)"
           - image_flavor: dx
             base_image_name: silverblue
             image_versions_key: silverblue-main-next
+            akmods_versions_key: ""
+            containerfile: "Containerfile"
             image_name_suffix: "-dx"
             image_desc: "Bluefin para o Brasil (developer experience, next)"
           - image_flavor: main
+            base_image_name: silverblue
+            image_versions_key: silverblue-main-next
+            akmods_versions_key: "akmods-nvidia-lts-main-next"
+            containerfile: "Containerfile.nvidia"
+            image_name_suffix: "-nvidia"
+            image_desc: "Bluefin para o Brasil (NVIDIA proprietário, next)"
+          - image_flavor: dx
+            base_image_name: silverblue
+            image_versions_key: silverblue-main-next
+            akmods_versions_key: "akmods-nvidia-lts-main-next"
+            containerfile: "Containerfile.nvidia"
+            image_name_suffix: "-dx-nvidia"
+            image_desc: "Bluefin para o Brasil (developer experience + NVIDIA proprietário, next)"
+          - image_flavor: main
             base_image_name: silverblue-nvidia-open
             image_versions_key: silverblue-nvidia-open-main-next
+            akmods_versions_key: ""
+            containerfile: "Containerfile"
             image_name_suffix: "-nvidia-open"
             image_desc: "Bluefin para o Brasil (NVIDIA, next)"
           - image_flavor: dx
             base_image_name: silverblue-nvidia-open
             image_versions_key: silverblue-nvidia-open-main-next
+            akmods_versions_key: ""
+            containerfile: "Containerfile"
             image_name_suffix: "-dx-nvidia-open"
             image_desc: "Bluefin para o Brasil (developer experience + NVIDIA, next)"
 
@@ -97,6 +121,12 @@ jobs:
           echo "COMMON_IMAGE_DIGEST=${COMMON_IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "BREW_IMAGE_DIGEST=${BREW_IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "FEDORA_MAJOR_VERSION=${FEDORA_MAJOR_VERSION}" >> $GITHUB_ENV
+          if [ -n "${{ matrix.akmods_versions_key }}" ]; then
+            AKMODS_NVIDIA_LTS_TAG=$(yq -r '.images[] | select(.name == "${{ matrix.akmods_versions_key }}") | .tag' image-versions.yml)
+            AKMODS_NVIDIA_LTS_DIGEST=$(yq -r '.images[] | select(.name == "${{ matrix.akmods_versions_key }}") | .digest' image-versions.yml)
+            echo "AKMODS_NVIDIA_LTS_TAG=${AKMODS_NVIDIA_LTS_TAG}" >> $GITHUB_ENV
+            echo "AKMODS_NVIDIA_LTS_DIGEST=${AKMODS_NVIDIA_LTS_DIGEST}" >> $GITHUB_ENV
+          fi
 
       - name: Get current date
         id: date
@@ -133,7 +163,7 @@ jobs:
         uses: redhat-actions/buildah-build@7a95fa7ee0f02d552a32753e7414641a04307056 # v2
         with:
           containerfiles: |
-            ./Containerfile
+            ./${{ matrix.containerfile }}
           image: ${{ env.IMAGE_NAME }}
           tags: ${{ env.DEFAULT_TAG }}
           labels: ${{ steps.metadata.outputs.labels }}
@@ -144,6 +174,8 @@ jobs:
             BASE_IMAGE_DIGEST=${{ env.BASE_IMAGE_DIGEST }}
             COMMON_IMAGE_DIGEST=${{ env.COMMON_IMAGE_DIGEST }}
             BREW_IMAGE_DIGEST=${{ env.BREW_IMAGE_DIGEST }}
+            AKMODS_NVIDIA_LTS_TAG=${{ env.AKMODS_NVIDIA_LTS_TAG }}
+            AKMODS_NVIDIA_LTS_DIGEST=${{ env.AKMODS_NVIDIA_LTS_DIGEST }}
           oci: false
 
       - name: Tag for registry

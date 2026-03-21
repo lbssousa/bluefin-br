@@ -64,6 +64,11 @@ if [[ "${IMAGE_FLAVOR:-main}" == "dx" ]]; then
     bash /ctx/build/dx.sh
 fi
 
+# Install proprietary NVIDIA drivers when building the nvidia image variant
+if [[ "${IS_NVIDIA_LTS:-false}" == "true" ]]; then
+    bash /ctx/build/nvidia-lts.sh
+fi
+
 # Restore default glob behavior
 shopt -u nullglob
 
