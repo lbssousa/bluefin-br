@@ -10,8 +10,8 @@
 # Image variants built per stream:
 #   bluefin-br              - base image (Silverblue + BR customisations)
 #   bluefin-br-dx           - developer experience variant
-#   bluefin-br-nvidia       - NVIDIA open drivers variant
-#   bluefin-br-dx-nvidia    - DX + NVIDIA open drivers variant
+#   bluefin-br-nvidia-open  - NVIDIA open drivers variant
+#   bluefin-br-dx-nvidia-open - DX + NVIDIA open drivers variant
 #
 name: Build stable image
 on:
@@ -67,12 +67,12 @@ jobs:
           - image_flavor: main
             base_image_name: silverblue-nvidia-open
             image_versions_key: silverblue-nvidia-open-main
-            image_name_suffix: "-nvidia"
+            image_name_suffix: "-nvidia-open"
             image_desc: "Bluefin para o Brasil (NVIDIA)"
           - image_flavor: dx
             base_image_name: silverblue-nvidia-open
             image_versions_key: silverblue-nvidia-open-main
-            image_name_suffix: "-dx-nvidia"
+            image_name_suffix: "-dx-nvidia-open"
             image_desc: "Bluefin para o Brasil (developer experience + NVIDIA)"
 
     steps:
