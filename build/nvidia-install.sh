@@ -56,6 +56,12 @@ dnf5 config-manager setopt fedora-cisco-openh264.enabled=0
 ## nvidia install steps
 dnf5 install -y "${AKMODNV_PATH}"/ublue-os/ublue-os-nvidia-addons-*.rpm
 
+# Install ublue-os-akmods-addons from the common akmods image.
+# This package provides the SecureBoot MOK enrollment key at
+# /etc/pki/akmods/certs/akmods-ublue.der, which users must enroll
+# via mokutil to allow signed NVIDIA kernel modules to load under SecureBoot.
+dnf5 install -y /tmp/akmods-addons-rpms/ublue-os-akmods-addons-*.rpm
+
 # Install MULTILIB packages from negativo17-multimedia prior to disabling repo
 if [[ "$(rpm -E '%{_arch}')" == "x86_64" && "${MULTILIB}" == "1" ]]; then
     MULTILIB_PKGS=(

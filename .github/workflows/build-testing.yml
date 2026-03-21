@@ -74,6 +74,7 @@ jobs:
             base_image_name: silverblue
             image_versions_key: silverblue-main
             akmods_versions_key: "akmods-nvidia-lts-main"
+            akmods_addons_versions_key: "akmods-main"
             containerfile: "Containerfile.nvidia"
             image_name_suffix: "-nvidia"
             image_desc: "Bluefin para o Brasil (NVIDIA proprietário, testing)"
@@ -81,6 +82,7 @@ jobs:
             base_image_name: silverblue
             image_versions_key: silverblue-main
             akmods_versions_key: "akmods-nvidia-lts-main"
+            akmods_addons_versions_key: "akmods-main"
             containerfile: "Containerfile.nvidia"
             image_name_suffix: "-dx-nvidia"
             image_desc: "Bluefin para o Brasil (developer experience + NVIDIA proprietário, testing)"
@@ -118,6 +120,12 @@ jobs:
           echo "BREW_IMAGE_DIGEST=${BREW_IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "FEDORA_MAJOR_VERSION=${FEDORA_MAJOR_VERSION}" >> $GITHUB_ENV
           if [ -n "${{ matrix.akmods_versions_key }}" ]; then
+            if [ -n "${{ matrix.akmods_addons_versions_key }}" ]; then
+              AKMODS_TAG=$(yq -r '.images[] | select(.name == "${{ matrix.akmods_addons_versions_key }}") | .tag' image-versions.yml)
+              AKMODS_DIGEST=$(yq -r '.images[] | select(.name == "${{ matrix.akmods_addons_versions_key }}") | .digest' image-versions.yml)
+              echo "AKMODS_TAG=${AKMODS_TAG}" >> $GITHUB_ENV
+              echo "AKMODS_DIGEST=${AKMODS_DIGEST}" >> $GITHUB_ENV
+            fi
             AKMODS_NVIDIA_LTS_TAG=$(yq -r '.images[] | select(.name == "${{ matrix.akmods_versions_key }}") | .tag' image-versions.yml)
             AKMODS_NVIDIA_LTS_DIGEST=$(yq -r '.images[] | select(.name == "${{ matrix.akmods_versions_key }}") | .digest' image-versions.yml)
             echo "AKMODS_NVIDIA_LTS_TAG=${AKMODS_NVIDIA_LTS_TAG}" >> $GITHUB_ENV
@@ -172,6 +180,8 @@ jobs:
             BASE_IMAGE_DIGEST=${{ env.BASE_IMAGE_DIGEST }}
             COMMON_IMAGE_DIGEST=${{ env.COMMON_IMAGE_DIGEST }}
             BREW_IMAGE_DIGEST=${{ env.BREW_IMAGE_DIGEST }}
+            AKMODS_TAG=${{ env.AKMODS_TAG }}
+            AKMODS_DIGEST=${{ env.AKMODS_DIGEST }}
             AKMODS_NVIDIA_LTS_TAG=${{ env.AKMODS_NVIDIA_LTS_TAG }}
             AKMODS_NVIDIA_LTS_DIGEST=${{ env.AKMODS_NVIDIA_LTS_DIGEST }}
           oci: false
