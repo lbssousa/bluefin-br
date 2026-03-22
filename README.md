@@ -118,10 +118,3 @@ sudo bootc switch ghcr.io/lbssousa/bluefin-br:stable
 sudo systemctl reboot
 ```
 
-## Optional: Enable Image Signing
-
-Image signing is **disabled by default** to let you start building immediately. To verify image authenticity, you can enable cosign signing:
-
-```bash
-cosign verify --key cosign.pub ghcr.io/lbssousa/bluefin-br:stable
-```
