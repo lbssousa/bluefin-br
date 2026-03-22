@@ -163,6 +163,7 @@ This creates two files:
    - Name: `SIGNING_SECRET`
    - Value: Paste the entire contents of `cosign.key`
    - Click "Add secret"
+   - If you set a password when generating the key pair, add another secret named `COSIGN_PASSWORD` with that password. If you used an empty password (just pressed Enter), this secret is not required.
 
 3. Replace the contents of `cosign.pub` with your public key:
    - Open `cosign.pub` in your repository
@@ -191,27 +192,17 @@ Ready to take your custom OS to production? Enable these features for enhanced s
   - See "Optional: Enable Image Signing" section above for setup instructions
   - Status: **Disabled by default** to allow immediate testing
 
-- [ ] **Enable SBOM Attestation** (Recommended)
+- [x] **Enable SBOM Attestation** (Recommended)
   - Generates Software Bill of Materials for supply chain security
   - Provides transparency about what's in your image
   - Requires image signing to be enabled first
-  - To enable:
-    1. First complete image signing setup above
-    2. Edit `.github/workflows/build.yml`
-    3. Find the "OPTIONAL: SBOM Attestation" section around line 232
-    4. Uncomment the "Add SBOM Attestation" step
-    5. Commit and push
-  - Status: **Disabled by default** (requires signing first)
+  - Status: **Enabled** (runs on every push to `main`)
 
-- [ ] **Enable Image Rechunking** (Recommended)
+- [x] **Enable Image Rechunking** (Recommended)
   - Optimizes bootc image layers for better update performance
   - Reduces update sizes by 5-10x
   - Improves download resumability with evenly sized layers
-  - To enable:
-    1. Edit `.github/workflows/build.yml`
-    2. Find the "Build Image" step
-    3. Add a rechunk step after the build (see example below)
-  - Status: **Not enabled by default** (optional optimization)
+  - Status: **Enabled** (runs on every build)
 
 #### Adding Image Rechunking
 
