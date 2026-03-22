@@ -77,6 +77,13 @@ toggle-nvidia:
 
     gum confirm "Switch to ${NEW_IMAGE}?" || exit 0
     pkexec bootc switch --enforce-container-sigpolicy "${NEW_IMAGE}"
+    if [[ "${TARGET}" != "base" ]]; then
+        echo ""
+        echo "Switched to the ${TARGET} image variant."
+        echo "After rebooting, run 'ujust enroll-secure-boot-key' and reboot again"
+        echo "to complete the one-time Secure Boot MOK enrollment."
+        echo "When prompted at the MOK Manager screen, enter the password: universalblue"
+    fi
 
 # Run a system benchmark (requires stress-ng from Homebrew)
 [group('System')]

@@ -27,11 +27,13 @@ Here are the changes from Bluefin. This image is based on [Bluefin](https://proj
   ```
 - **`bluefin-br-nvidia-open`** / **`bluefin-br-dx-nvidia-open`**: Includes the latest NVIDIA **590.xxx** open kernel modules (via `akmods-nvidia-open`). Recommended for modern NVIDIA GPUs (Turing/Ampere/Ada/Hopper and newer) supported by the open driver.
 
+  After switching to any NVIDIA variant and rebooting, you must complete a **one-time Secure Boot MOK enrollment** — see the [NVIDIA Images & Secure Boot](#nvidia-images--secure-boot) section below for the full procedure.
+
 ### Configuration Changes
 - Based on `ghcr.io/ublue-os/silverblue-main:latest` — identical to Bluefin's base
 - `/opt` is an immutable real directory (not a symlink to `/var/opt`) so that packages installed there — such as `epson-printer-utility` — are correctly included in the image layers and deployed by bootc.
 
-*Last updated: 2025-03-21*
+*Last updated: 2026-03-22*
 
 ## What's Included
 
@@ -128,6 +130,82 @@ All changes should be made via pull requests:
 ### 6. Deploy Your Image
 
 Switch to your image:
+```bash
+sudo bootc switch ghcr.io/lbssousa/bluefin-br:stable
+sudo systemctl reboot
+```
+
+## NVIDIA Images & Secure Boot
+
+The `bluefin-br-nvidia` and `bluefin-br-nvidia-open` image variants include pre-built NVIDIA kernel modules. Because these out-of-tree kernel modules are signed with the Universal Blue key, they require **Secure Boot MOK (Machine Owner Key) enrollment** before the modules can load.
+
+This is a one-time step performed after the first boot into an NVIDIA image variant.
+
+### Which NVIDIA Image Should I Use?
+
+| Image | Driver series | GPU generations |
+|---|---|---|
+| `bluefin-br-nvidia` | **580.xxx** (proprietary legacy) | Older cards dropped from 590.xxx (e.g., Kepler, some Maxwell) |
+| `bluefin-br-nvidia-open` | **590.xxx** (open kernel module) | Turing, Ampere, Ada, Hopper, and newer |
+
+If you are unsure which GPU you have, run `lspci | grep -i nvidia`. Check [NVIDIA's supported GPUs page](https://www.nvidia.com/en-us/drivers/unix/) to determine which driver series supports your card.
+
+### Switching to an NVIDIA Image
+
+```bash
+# Proprietary legacy drivers (580.xxx) — for older GPUs
+sudo bootc switch ghcr.io/lbssousa/bluefin-br-nvidia:stable
+
+# Open kernel modules (590.xxx) — for modern GPUs
+sudo bootc switch ghcr.io/lbssousa/bluefin-br-nvidia-open:stable
+
+# Reboot to apply the switch
+sudo systemctl reboot
+```
+
+You can also use the interactive `ujust toggle-nvidia` recipe to switch between base, `nvidia`, and `nvidia-open` variants.
+
+### MOK Enrollment (one-time, required on Secure Boot systems)
+
+After the first boot into an NVIDIA image, enroll the Universal Blue signing key so that the NVIDIA kernel modules are allowed to load:
+
+1. **Queue the key for enrollment:**
+   ```bash
+   ujust enroll-secure-boot-key
+   ```
+
+2. **Reboot the system:**
+   ```bash
+   systemctl reboot
+   ```
+
+3. **At the blue MOK Manager screen** (UEFI firmware interface), use the *QWERTY* keyboard:
+   - Select **Enroll MOK**
+   - Select **Continue**
+   - Select **Yes**
+   - Enter the enrollment password: **`universalblue`**
+   - Select **Reboot**
+
+4. The system boots normally with the key enrolled. The NVIDIA modules will load automatically.
+
+> **Note**: If Secure Boot is disabled in your UEFI firmware, MOK enrollment is not required and the modules will load without it.
+
+### Verifying the NVIDIA Driver Is Loaded
+
+After rebooting:
+
+```bash
+# Check that the NVIDIA driver module is loaded
+lsmod | grep nvidia
+
+# Verify GPU is accessible
+nvidia-smi
+```
+
+If `nvidia-smi` returns GPU information, the driver is working correctly.
+
+### Switching Back to the Base Image
+
 ```bash
 sudo bootc switch ghcr.io/lbssousa/bluefin-br:stable
 sudo systemctl reboot
