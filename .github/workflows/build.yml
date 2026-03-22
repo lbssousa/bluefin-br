@@ -217,6 +217,30 @@ jobs:
             AKMODS_NVIDIA_DIGEST=${{ env.AKMODS_NVIDIA_DIGEST }}
           oci: false
 
+      - name: Rechunk Image
+        run: |
+          # Copy image from user storage to rootful podman
+          podman save "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" | sudo podman load
+
+          # Rechunk using bootc-base-imagectl with temporary tag strategy
+          sudo podman run --rm --privileged \
+            -v /var/lib/containers:/var/lib/containers \
+            --entrypoint /usr/libexec/bootc-base-imagectl \
+            "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" \
+            rechunk --max-layers 67 \
+            "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" \
+            "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}-rechunked"
+
+          # Replace original tag with rechunked image
+          sudo podman tag \
+            "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}-rechunked" \
+            "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
+          sudo podman rmi "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}-rechunked"
+
+          # Sync rechunked image back to user storage for subsequent steps
+          sudo podman save "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" | podman load
+          sudo podman rmi "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
+
       - name: Tag for registry
         run: |
           for tag in ${{ steps.tags.outputs.tags }}; do
@@ -268,22 +292,35 @@ jobs:
       # OPTIONAL: SBOM Attestation
       # Attaches SBOM (Software Bill of Materials) to your signed image for supply chain security.
       # Requires image signing to be enabled first (see above).
-      # To enable:
-      #   1. First enable image signing (see above section)
-      #   2. Uncomment the "Add SBOM Attestation" step below
       # Documentation: https://slsa.dev/spec/v1.0/requirements#provenance-available
 
-      # - name: Add SBOM Attestation
-      #   if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
-      #   env:
-      #     IMAGE: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
-      #     DIGEST: ${{ steps.push.outputs.digest }}
-      #     COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
-      #     SBOM_OUTPUT: ${{ steps.generate-sbom.outputs.OUTPUT_PATH }}
-      #   run: |
-      #     cd "$(dirname "$SBOM_OUTPUT")"
-      #     cosign attest -y \
-      #       --predicate "$(basename "$SBOM_OUTPUT")" \
-      #       --type spdxjson \
-      #       --key env://COSIGN_PRIVATE_KEY \
-      #       "${IMAGE}@${DIGEST}"
+      - name: Setup Syft
+        id: setup-syft
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        uses: anchore/sbom-action/download-syft@57aae528053a48a3f6235f2d9461b05fbcb7366d # v0
+
+      - name: Generate SBOM
+        id: generate-sbom
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        run: |
+          OUTPUT_PATH="$(mktemp -d)/sbom.spdx.json"
+          ${{ steps.setup-syft.outputs.cmd }} scan \
+            "${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.push.outputs.digest }}" \
+            -o spdx-json="${OUTPUT_PATH}"
+          echo "OUTPUT_PATH=${OUTPUT_PATH}" >> $GITHUB_OUTPUT
+
+      - name: Add SBOM Attestation
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        env:
+          IMAGE: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+          COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+          SBOM_OUTPUT: ${{ steps.generate-sbom.outputs.OUTPUT_PATH }}
+        run: |
+          cd "$(dirname "$SBOM_OUTPUT")"
+          cosign attest -y \
+            --predicate "$(basename "$SBOM_OUTPUT")" \
+            --type spdxjson \
+            --key env://COSIGN_PRIVATE_KEY \
+            "${IMAGE}@${DIGEST}"

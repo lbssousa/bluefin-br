@@ -189,6 +189,30 @@ jobs:
             AKMODS_NVIDIA_DIGEST=${{ env.AKMODS_NVIDIA_DIGEST }}
           oci: false
 
+      - name: Rechunk Image
+        run: |
+          # Copy image from user storage to rootful podman
+          podman save "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" | sudo podman load
+
+          # Rechunk using bootc-base-imagectl with temporary tag strategy
+          sudo podman run --rm --privileged \
+            -v /var/lib/containers:/var/lib/containers \
+            --entrypoint /usr/libexec/bootc-base-imagectl \
+            "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" \
+            rechunk --max-layers 67 \
+            "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" \
+            "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}-rechunked"
+
+          # Replace original tag with rechunked image
+          sudo podman tag \
+            "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}-rechunked" \
+            "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
+          sudo podman rmi "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}-rechunked"
+
+          # Sync rechunked image back to user storage for subsequent steps
+          sudo podman save "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" | podman load
+          sudo podman rmi "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
+
       - name: Tag for registry
         run: |
           for tag in ${{ steps.metadata.outputs.tags }}; do
