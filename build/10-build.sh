@@ -32,6 +32,31 @@ rsync -rvK /ctx/oci/brew/ /
 
 echo "::endgroup::"
 
+echo "::group:: Configure Image Signing Policy"
+
+# Install cosign public key so the system can verify images from ghcr.io/lbssousa
+install -Dm0644 /ctx/cosign.pub /usr/lib/pki/containers/lbssousa.pub
+
+# Add ghcr.io/lbssousa to the container signing policy so that rpm-ostree
+# reports images as "ostree-image-signed:" instead of "ostree-unverified-registry:"
+jq '.transports.docker["ghcr.io/lbssousa"] = [
+  {
+    "type": "sigstoreSigned",
+    "keyPath": "/usr/lib/pki/containers/lbssousa.pub",
+    "signedIdentity": { "type": "matchRepository" }
+  }
+]' /etc/containers/policy.json > /tmp/policy.json.tmp
+mv /tmp/policy.json.tmp /etc/containers/policy.json
+
+# Enable sigstore attachment lookups for ghcr.io/lbssousa
+cat > /etc/containers/registries.d/ghcr.io-lbssousa.yaml << 'EOF'
+docker:
+  ghcr.io/lbssousa:
+    use-sigstore-attachments: true
+EOF
+
+echo "::endgroup::"
+
 echo "::group:: Copy Custom Files"
 
 # Copy Brewfiles to standard location
