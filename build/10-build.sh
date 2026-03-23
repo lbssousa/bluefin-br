@@ -18,11 +18,17 @@ shopt -s nullglob
 
 echo "::group:: Copy Bluefin Config from Common"
 
-# Copy just files from @projectbluefin/common (includes 00-entry.just which imports 60-custom.just)
-mkdir -p /usr/share/ublue-os/just/
-shopt -s nullglob
-cp -r /ctx/oci/common/bluefin/usr/share/ublue-os/just/* /usr/share/ublue-os/just/
-shopt -u nullglob
+# Remove packages whose files are overridden by @projectbluefin/common.
+# Without removal, these RPM-owned files would be lost if those packages were ever removed,
+# and dnf would consider the RPM DB state inconsistent.
+dnf remove -y ublue-os-luks ublue-os-just ublue-os-udev-rules ublue-os-signing ublue-os-update-services
+
+# Copy shared system files from @projectbluefin/common (common baseline for all ublue images)
+rsync -rvK /ctx/oci/common/shared/ /
+# Copy Bluefin-specific system files from @projectbluefin/common (overrides the shared baseline)
+rsync -rvK /ctx/oci/common/bluefin/ /
+# Copy Homebrew integration system files from @ublue-os/brew
+rsync -rvK /ctx/oci/brew/ /
 
 echo "::endgroup::"
 
