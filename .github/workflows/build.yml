@@ -305,7 +305,7 @@ jobs:
         run: |
           OUTPUT_PATH="$(mktemp -d)/sbom.spdx.json"
           ${{ steps.setup-syft.outputs.cmd }} scan \
-            "${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.push.outputs.digest }}" \
+            "containers-storage:${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" \
             -o spdx-json="${OUTPUT_PATH}"
           echo "OUTPUT_PATH=${OUTPUT_PATH}" >> $GITHUB_OUTPUT
 
