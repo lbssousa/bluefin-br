@@ -44,7 +44,7 @@ jobs:
     name: Build and push image (${{ matrix.image_name_suffix != '' && matrix.image_name_suffix || 'base' }})
     runs-on: ubuntu-24.04
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ matrix.image_flavor }}-${{ matrix.base_image_name }}
+      group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ matrix.image_flavor }}-${{ matrix.base_image_name }}-${{ matrix.image_name_suffix }}
       cancel-in-progress: true
 
     permissions:
