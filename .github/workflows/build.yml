@@ -281,7 +281,7 @@ jobs:
         run: |
           IMAGE_FULL="${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}"
           for tag in ${{ steps.tags.outputs.tags }}; do
-            cosign sign -y --key env://COSIGN_PRIVATE_KEY $IMAGE_FULL:${tag}
+            cosign sign -y --key env://COSIGN_PRIVATE_KEY --tlog-upload=false $IMAGE_FULL:${tag}
           done
         env:
           TAGS: ${{ steps.push.outputs.digest }}
@@ -323,4 +323,5 @@ jobs:
             --predicate "$(basename "$SBOM_OUTPUT")" \
             --type spdxjson \
             --key env://COSIGN_PRIVATE_KEY \
+            --tlog-upload=false \
             "${IMAGE}@${DIGEST}"
