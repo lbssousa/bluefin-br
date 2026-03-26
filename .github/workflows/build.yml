@@ -303,10 +303,16 @@ jobs:
         id: generate-sbom
         if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         run: |
+          set -euo pipefail
           OUTPUT_PATH="$(mktemp -d)/sbom.spdx.json"
+          OCI_DIR="$(mktemp -d)"
+          skopeo copy \
+            "containers-storage:localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" \
+            "oci:${OCI_DIR}"
           ${{ steps.setup-syft.outputs.cmd }} scan \
-            "containers-storage:${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" \
+            "oci-dir:${OCI_DIR}" \
             -o spdx-json="${OUTPUT_PATH}"
+          rm -rf "${OCI_DIR}"
           echo "OUTPUT_PATH=${OUTPUT_PATH}" >> $GITHUB_OUTPUT
 
       - name: Add SBOM Attestation
