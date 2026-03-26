@@ -238,8 +238,8 @@ jobs:
           sudo podman rmi "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}-rechunked"
 
           # Sync rechunked image back to user storage for subsequent steps
+          # Note: keep image in rootful storage too for SBOM generation (podman image mount needs root)
           sudo podman save "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" | podman load
-          sudo podman rmi "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
 
       - name: Tag for registry
         run: |
@@ -306,8 +306,8 @@ jobs:
           set -euo pipefail
           OUTPUT_PATH="$(mktemp -d)/sbom.spdx.json"
           IMAGE_REF="localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
-          MOUNT_PATH=$(podman image mount "${IMAGE_REF}")
-          trap "podman image umount '${IMAGE_REF}'" EXIT
+          MOUNT_PATH=$(sudo podman image mount "${IMAGE_REF}")
+          trap "sudo podman image umount '${IMAGE_REF}'; sudo podman rmi '${IMAGE_REF}'" EXIT
           ${{ steps.setup-syft.outputs.cmd }} scan \
             "dir:${MOUNT_PATH}" \
             -o spdx-json="${OUTPUT_PATH}"
