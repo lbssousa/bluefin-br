@@ -305,9 +305,11 @@ jobs:
         run: |
           set -euo pipefail
           OUTPUT_PATH="$(mktemp -d)/sbom.spdx.json"
+          IMAGE_REF="localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
+          MOUNT_PATH=$(podman image mount "${IMAGE_REF}")
+          trap "podman image umount '${IMAGE_REF}'" EXIT
           ${{ steps.setup-syft.outputs.cmd }} scan \
-            --scope squashed \
-            "registry:${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.push.outputs.digest }}" \
+            "dir:${MOUNT_PATH}" \
             -o spdx-json="${OUTPUT_PATH}"
           echo "OUTPUT_PATH=${OUTPUT_PATH}" >> $GITHUB_OUTPUT
 
