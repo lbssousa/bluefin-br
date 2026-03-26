@@ -306,9 +306,10 @@ jobs:
           set -euo pipefail
           OUTPUT_PATH="$(mktemp -d)/sbom.spdx.json"
           OCI_DIR="$(mktemp -d)"
-          skopeo copy \
-            "containers-storage:localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" \
-            "oci:${OCI_DIR}"
+          podman save \
+            --format oci-dir \
+            "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" \
+            -o "${OCI_DIR}"
           ${{ steps.setup-syft.outputs.cmd }} scan \
             "oci-dir:${OCI_DIR}" \
             -o spdx-json="${OUTPUT_PATH}"
