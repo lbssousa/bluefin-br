@@ -308,9 +308,12 @@ jobs:
           IMAGE_REF="localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
           MOUNT_PATH=$(sudo podman image mount "${IMAGE_REF}")
           trap "sudo podman image umount '${IMAGE_REF}'; sudo podman rmi '${IMAGE_REF}'" EXIT
-          ${{ steps.setup-syft.outputs.cmd }} scan \
+          # Run syft with sudo: the mount path is owned by root (created by sudo podman image mount)
+          sudo ${{ steps.setup-syft.outputs.cmd }} scan \
             "dir:${MOUNT_PATH}" \
             -o spdx-json="${OUTPUT_PATH}"
+          # Fix ownership so the subsequent cosign attest step can read the file
+          sudo chown "$(id -u):$(id -g)" "${OUTPUT_PATH}"
           echo "OUTPUT_PATH=${OUTPUT_PATH}" >> $GITHUB_OUTPUT
 
       - name: Add SBOM Attestation
