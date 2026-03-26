@@ -305,15 +305,12 @@ jobs:
         run: |
           set -euo pipefail
           OUTPUT_PATH="$(mktemp -d)/sbom.spdx.json"
-          OCI_DIR="$(mktemp -d)"
-          podman save \
-            --format oci-dir \
-            "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" \
-            -o "${OCI_DIR}"
+          IMAGE_REF="localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
+          MOUNT_PATH=$(podman image mount "${IMAGE_REF}")
+          trap "podman image umount '${IMAGE_REF}'" EXIT
           ${{ steps.setup-syft.outputs.cmd }} scan \
-            "oci-dir:${OCI_DIR}" \
+            "dir:${MOUNT_PATH}" \
             -o spdx-json="${OUTPUT_PATH}"
-          rm -rf "${OCI_DIR}"
           echo "OUTPUT_PATH=${OUTPUT_PATH}" >> $GITHUB_OUTPUT
 
       - name: Add SBOM Attestation
