@@ -191,6 +191,21 @@ jobs:
 
       - name: Rechunk Image
         run: |
+          # Pre-pull the rechunking tool image with retry to handle transient registry failures
+          RECHUNK_IMAGE="quay.io/centos-bootc/centos-bootc:stream10"
+          for attempt in 1 2 3; do
+            if sudo podman pull "${RECHUNK_IMAGE}"; then
+              break
+            fi
+            echo "Pull failed (attempt ${attempt}/3)"
+            if [ "${attempt}" -eq 3 ]; then
+              echo "All pull attempts failed, giving up"
+              exit 1
+            fi
+            echo "Retrying in 30s..."
+            sleep 30
+          done
+
           # Copy image from user storage to rootful podman
           podman save "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" | sudo podman load
 
