@@ -27,6 +27,8 @@ dnf remove -y ublue-os-luks ublue-os-just ublue-os-udev-rules ublue-os-signing u
 rsync -rvK /ctx/oci/common/shared/ /
 # Copy Bluefin-specific system files from @projectbluefin/common (overrides the shared baseline)
 rsync -rvK /ctx/oci/common/bluefin/ /
+# Copy GNOME extensions from local system_files (includes git submodules)
+rsync -rvK /ctx/system_files/shared/ /
 # Copy Homebrew integration system files from @ublue-os/brew
 rsync -rvK /ctx/oci/brew/ /
 
@@ -75,10 +77,46 @@ echo "::endgroup::"
 echo "::group:: Install Packages"
 
 # Install packages using dnf5
-# Example: dnf5 install -y tmux
+dnf5 install -y \
+    glow \
+    jetbrains-mono-fonts-all \
+    just
 
-# Example using COPR with isolated pattern:
-# copr_install_isolated "ublue-os/staging" package-name
+# Install nerd-fonts from COPR (provides JetBrainsMono Nerd Font family)
+copr_install_isolated "che/nerd-fonts" "nerd-fonts"
+
+echo "::endgroup::"
+
+# Build GNOME Extensions (handles its own ::group:: grouping)
+bash /ctx/build/build-gnome-extensions.sh
+
+echo "::group:: Generate Image Info"
+
+IMAGE_INFO="/usr/share/ublue-os/image-info.json"
+IMAGE_REF="ostree-image-signed:docker://ghcr.io/lbssousa/bluefin-br"
+
+image_flavor="${IMAGE_FLAVOR:-main}"
+
+mkdir -p /usr/share/ublue-os
+cat > "${IMAGE_INFO}" << EOF
+{
+  "image-name": "bluefin-br",
+  "image-flavor": "${image_flavor}",
+  "image-vendor": "lbssousa",
+  "image-ref": "${IMAGE_REF}",
+  "base-image-name": "silverblue"
+}
+EOF
+
+echo "::endgroup::"
+
+echo "::group:: Regenerate Initramfs (for Plymouth theme)"
+
+KERNEL_SUFFIX=""
+QUALIFIED_KERNEL="$(rpm -qa | grep -P 'kernel-(|'"${KERNEL_SUFFIX}"'-)(\d+\.\d+\.\d+)' | sed -E 's/kernel-(|'"${KERNEL_SUFFIX}"'-)//')"
+export DRACUT_NO_XATTR=1
+/usr/bin/dracut --no-hostonly --kver "${QUALIFIED_KERNEL}" --reproducible -v --add ostree -f "/lib/modules/${QUALIFIED_KERNEL}/initramfs.img"
+chmod 0600 "/lib/modules/${QUALIFIED_KERNEL}/initramfs.img"
 
 echo "::endgroup::"
 
