@@ -41,7 +41,7 @@
 
 # ARG values are updated automatically by Renovate via image-versions.yml
 ARG COMMON_IMAGE="ghcr.io/projectbluefin/common:latest"
-ARG COMMON_IMAGE_DIGEST="sha256:9409d0c08bf76bdfef52812db61a68453b20b23b52042e810a447ada3c72c9c1"
+ARG COMMON_IMAGE_DIGEST="sha256:48a1786414c5dff15060f4c799d04ded5ae16e1497d5fcdf10a537f3bbe7e2a1"
 ARG BREW_IMAGE="ghcr.io/ublue-os/brew:latest"
 ARG BREW_IMAGE_DIGEST="sha256:fef8b4728cb042f6b69ad9be90a43095261703103fe6c0735c9d6f035065c052"
 ARG BASE_IMAGE_NAME="silverblue"
