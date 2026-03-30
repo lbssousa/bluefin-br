@@ -33,14 +33,30 @@ jobs:
           #   DL      - Trigger download redirect
           REDIRECT_URL="https://download.ebz.epson.net/dsc/du/02/DriverDownloadInfo.do?LG2=JA&CN2=US&CTI=176&PRN=Linux%20src.rpm%20package&OSC=LX&DL"
 
-          # Follow redirects to find the current download URL
-          FINAL_URL=$(curl --silent --location --head --max-redirs 10 \
-            --write-out '%{url_effective}' \
+          # Follow redirects to find the current download URL.
+          # %{exitcode} requires curl 7.75+; Ubuntu 24.04 ships curl 8.5+.
+          CURL_OUT=$(curl --silent --location --head --max-redirs 10 \
+            --write-out '%{exitcode} %{http_code} %{url_effective}' \
+            --connect-timeout 15 \
+            --max-time 30 \
             --output /dev/null \
             "${REDIRECT_URL}" 2>/dev/null || true)
 
+          # Parse space-separated output: exitcode, http_code, url_effective
+          CURL_EXIT="${CURL_OUT%% *}"
+          CURL_REST="${CURL_OUT#* }"
+          HTTP_CODE="${CURL_REST%% *}"
+          FINAL_URL="${CURL_REST#* }"
+
+          if [ "${CURL_EXIT}" != "0" ]; then
+            echo "::warning::Epson download portal unreachable for escpr (curl exit ${CURL_EXIT}, DNS or network failure) - cannot check for updates"
+            echo "new_url=" >> "${GITHUB_OUTPUT}"
+            echo "new_version=" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
           if [ -z "${FINAL_URL}" ] || [[ "${FINAL_URL}" == *"DriverDownloadInfo"* ]]; then
-            echo "Could not resolve redirect for escpr - skipping"
+            echo "::warning::Epson download portal did not redirect to a download URL for escpr (HTTP ${HTTP_CODE}) - skipping"
             echo "new_url=" >> "${GITHUB_OUTPUT}"
             echo "new_version=" >> "${GITHUB_OUTPUT}"
             exit 0
@@ -83,14 +99,30 @@ jobs:
           #   DL      - Trigger download redirect
           REDIRECT_URL="https://download.ebz.epson.net/dsc/du/02/DriverDownloadInfo.do?LG2=JA&CN2=US&CTI=177&PRN=Linux%20rpm%2064bit%20package&OSC=LX&DL"
 
-          # Follow redirects to find the current download URL
-          FINAL_URL=$(curl --silent --location --head --max-redirs 10 \
-            --write-out '%{url_effective}' \
+          # Follow redirects to find the current download URL.
+          # %{exitcode} requires curl 7.75+; Ubuntu 24.04 ships curl 8.5+.
+          CURL_OUT=$(curl --silent --location --head --max-redirs 10 \
+            --write-out '%{exitcode} %{http_code} %{url_effective}' \
+            --connect-timeout 15 \
+            --max-time 30 \
             --output /dev/null \
             "${REDIRECT_URL}" 2>/dev/null || true)
 
+          # Parse space-separated output: exitcode, http_code, url_effective
+          CURL_EXIT="${CURL_OUT%% *}"
+          CURL_REST="${CURL_OUT#* }"
+          HTTP_CODE="${CURL_REST%% *}"
+          FINAL_URL="${CURL_REST#* }"
+
+          if [ "${CURL_EXIT}" != "0" ]; then
+            echo "::warning::Epson download portal unreachable for printer-utility (curl exit ${CURL_EXIT}, DNS or network failure) - cannot check for updates"
+            echo "new_url=" >> "${GITHUB_OUTPUT}"
+            echo "new_version=" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
           if [ -z "${FINAL_URL}" ] || [[ "${FINAL_URL}" == *"DriverDownloadInfo"* ]]; then
-            echo "Could not resolve redirect for printer-utility - skipping"
+            echo "::warning::Epson download portal did not redirect to a download URL for printer-utility (HTTP ${HTTP_CODE}) - skipping"
             echo "new_url=" >> "${GITHUB_OUTPUT}"
             echo "new_version=" >> "${GITHUB_OUTPUT}"
             exit 0
