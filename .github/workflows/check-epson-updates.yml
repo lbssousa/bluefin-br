@@ -34,11 +34,14 @@ jobs:
           REDIRECT_URL="https://download.ebz.epson.net/dsc/du/02/DriverDownloadInfo.do?LG2=JA&CN2=US&CTI=176&PRN=Linux%20src.rpm%20package&OSC=LX&DL"
 
           # Follow redirects to find the current download URL.
+          # A GET request (not HEAD) is required because Epson's portal servlet
+          # returns HTTP 403 for HEAD requests.  The file body is discarded to
+          # /dev/null; only the final effective URL is captured.
           # %{exitcode} requires curl 7.75+; Ubuntu 24.04 ships curl 8.5+.
-          CURL_OUT=$(curl --silent --location --head --max-redirs 10 \
+          CURL_OUT=$(curl --silent --location --max-redirs 10 \
             --write-out '%{exitcode} %{http_code} %{url_effective}' \
             --connect-timeout 15 \
-            --max-time 30 \
+            --max-time 60 \
             --output /dev/null \
             "${REDIRECT_URL}" 2>/dev/null || true)
 
@@ -100,11 +103,14 @@ jobs:
           REDIRECT_URL="https://download.ebz.epson.net/dsc/du/02/DriverDownloadInfo.do?LG2=JA&CN2=US&CTI=177&PRN=Linux%20rpm%2064bit%20package&OSC=LX&DL"
 
           # Follow redirects to find the current download URL.
+          # A GET request (not HEAD) is required because Epson's portal servlet
+          # returns HTTP 403 for HEAD requests.  The file body is discarded to
+          # /dev/null; only the final effective URL is captured.
           # %{exitcode} requires curl 7.75+; Ubuntu 24.04 ships curl 8.5+.
-          CURL_OUT=$(curl --silent --location --head --max-redirs 10 \
+          CURL_OUT=$(curl --silent --location --max-redirs 10 \
             --write-out '%{exitcode} %{http_code} %{url_effective}' \
             --connect-timeout 15 \
-            --max-time 30 \
+            --max-time 60 \
             --output /dev/null \
             "${REDIRECT_URL}" 2>/dev/null || true)
 
