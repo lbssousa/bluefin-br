@@ -38,7 +38,9 @@ EPSON_LANGUAGE="en"
 # AUR RPC v5 — fallback version oracle
 AUR_API="https://aur.archlinux.org/rpc/v5/info"
 # Browser User-Agent to satisfy Akamai WAF
-USER_AGENT="Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0"
+# IMPORTANT: Akamai blocks UAs containing "Mozilla" (including real browser UAs).
+# Use a simple browser name instead (e.g. 'Firefox').
+USER_AGENT="Firefox"
 # ──────────────────────────────────────────────────────────────────────────
 
 # Color output (disabled for CI / non-interactive)

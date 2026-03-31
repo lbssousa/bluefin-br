@@ -19,18 +19,53 @@ set -eoux pipefail
 #   - CI: `.github/workflows/check-epson-updates.yml` (Epson API + AUR fallback)
 #   - Local: `./scripts/check-epson-updates.sh --update`
 #
-# Downloads use `-A 'Mozilla'` User-Agent to satisfy Akamai CDN/WAF.
-# See AUR discussion: https://aur.archlinux.org/packages/epson-inkjet-printer-escpr
+# Downloads require a real browser name as User-Agent (e.g. 'Firefox') to pass
+# Akamai CDN/WAF. Generic strings like 'Mozilla' or 'curl' are blocked.
+# See AUR PKGBUILD: https://aur.archlinux.org/packages/epson-inkjet-printer-escpr
 ###############################################################################
 
-# ── Pinned versions ────────────────────────────────────────────────────────
+# ── Pinned versions & URLs ────────────────────────────────────────────────
+# Primary: download-center.epson.com (latest versions, requires browser UA)
+# Fallback: download3.ebz.epson.net (AkamaiNetStorage CDN, no UA check, older versions)
+
 # renovate: datasource=custom.epson-escpr
 ESCPR_VERSION="1.8.8"
 ESCPR_SRPM_URL="https://download-center.epson.com/f/module/e934c1f6-0fc1-43e5-8d3e-0de8f3a3d357/epson-inkjet-printer-escpr-${ESCPR_VERSION}-1.src.rpm"
+ESCPR_FALLBACK_VERSION="1.8.6"
+ESCPR_FALLBACK_URL="https://download3.ebz.epson.net/dsc/f/03/00/16/21/79/6d53e6ec3f8c1e55733eb7860e992a425883bf88/epson-inkjet-printer-escpr-${ESCPR_FALLBACK_VERSION}-1.src.rpm"
 
 # renovate: datasource=custom.epson-printer-utility
 UTILITY_VERSION="1.2.2"
 UTILITY_RPM_URL="https://download-center.epson.com/f/module/0fd7dd73-92c2-451e-88cf-cf385e0f6db7/epson-printer-utility-${UTILITY_VERSION}-1.x86_64.rpm"
+UTILITY_FALLBACK_VERSION="1.1.3"
+UTILITY_FALLBACK_URL="https://download3.ebz.epson.net/dsc/f/03/00/15/43/24/e0c56348985648be318592edd35955672826bf2c/epson-printer-utility-${UTILITY_FALLBACK_VERSION}-1.x86_64.rpm"
+
+# ── Download helper ───────────────────────────────────────────────────────
+# Tries the primary URL (download-center.epson.com) with a browser-like
+# User-Agent, then falls back to the direct CDN URL (download3.ebz.epson.net)
+# which has no anti-bot restrictions but may carry an older version.
+download_epson() {
+    local output="$1" primary_url="$2" fallback_url="$3" desc="$4"
+
+    echo "Downloading ${desc}..."
+    if curl -L --fail --retry 3 --retry-delay 5 -A 'Firefox' \
+            --output "${output}" "${primary_url}"; then
+        return 0
+    fi
+
+    echo "WARN: Primary download failed (Akamai may be blocking this IP)."
+    echo "WARN: Falling back to CDN URL (may be an older version)."
+    if curl -L --fail --retry 3 --retry-delay 5 \
+            --output "${output}" "${fallback_url}"; then
+        return 0
+    fi
+
+    echo "ERROR: All download sources failed for ${desc}!"
+    echo "  Primary:  ${primary_url}"
+    echo "  Fallback: ${fallback_url}"
+    echo "Try running locally: ./scripts/check-epson-updates.sh"
+    return 1
+}
 # ──────────────────────────────────────────────────────────────────────────
 
 echo "::group:: Install Build Dependencies for ESC/P-R Driver"
@@ -59,14 +94,22 @@ echo "::group:: Build and Install epson-inkjet-printer-escpr ${ESCPR_VERSION}"
 ESCPR_BUILD_DIR=$(mktemp -d)
 trap 'rm -rf "${ESCPR_BUILD_DIR}"' EXIT
 
-curl -L --fail -A 'Mozilla' --output "${ESCPR_BUILD_DIR}/epson-inkjet-printer-escpr.src.rpm" \
-    "${ESCPR_SRPM_URL}"
+download_epson \
+    "${ESCPR_BUILD_DIR}/epson-inkjet-printer-escpr.src.rpm" \
+    "${ESCPR_SRPM_URL}" \
+    "${ESCPR_FALLBACK_URL}" \
+    "epson-inkjet-printer-escpr src.rpm"
 
 pushd "${ESCPR_BUILD_DIR}"
   rpm2cpio epson-inkjet-printer-escpr.src.rpm | cpio -idmv
 
-  tar xzf "epson-inkjet-printer-escpr-${ESCPR_VERSION}-1.tar.gz"
-  cd "epson-inkjet-printer-escpr-${ESCPR_VERSION}"
+  # Detect actual version from extracted tarball (may differ if fallback was used)
+  ESCPR_TARBALL=$(ls epson-inkjet-printer-escpr-*-1.tar.gz)
+  ESCPR_ACTUAL_VERSION=$(echo "${ESCPR_TARBALL}" | sed 's/epson-inkjet-printer-escpr-\(.*\)-1\.tar\.gz/\1/')
+  echo "Building epson-inkjet-printer-escpr version: ${ESCPR_ACTUAL_VERSION}"
+
+  tar xzf "${ESCPR_TARBALL}"
+  cd "epson-inkjet-printer-escpr-${ESCPR_ACTUAL_VERSION}"
 
   autoreconf -vif
   # GCC 14 (Fedora 41+) promotes -Wimplicit-function-declaration to an error;
@@ -87,8 +130,11 @@ echo "::group:: Install epson-printer-utility ${UTILITY_VERSION}"
 
 UTILITY_RPM="${ESCPR_BUILD_DIR}/epson-printer-utility.x86_64.rpm"
 
-curl -L --fail -A 'Mozilla' --output "${UTILITY_RPM}" \
-    "${UTILITY_RPM_URL}"
+download_epson \
+    "${UTILITY_RPM}" \
+    "${UTILITY_RPM_URL}" \
+    "${UTILITY_FALLBACK_URL}" \
+    "epson-printer-utility RPM"
 
 # Install the binary RPM:
 # --nodeps   : skip dependency checks (LSB compatibility shim not present on modern Fedora)
