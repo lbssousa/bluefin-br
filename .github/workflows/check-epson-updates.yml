@@ -34,11 +34,13 @@ jobs:
           REDIRECT_URL="https://download.ebz.epson.net/dsc/du/02/DriverDownloadInfo.do?LG2=JA&CN2=US&CTI=176&PRN=Linux%20src.rpm%20package&OSC=LX&DL"
 
           # Follow redirects to find the current download URL.
-          # A GET request (not HEAD) is required because Epson's portal servlet
-          # returns HTTP 403 for HEAD requests.  The file body is discarded to
+          # Epson's portal servlet blocks both HEAD requests and the default
+          # curl User-Agent with HTTP 403.  A browser-like User-Agent and a
+          # full GET are required.  The response body is discarded to
           # /dev/null; only the final effective URL is captured.
           # %{exitcode} requires curl 7.75+; Ubuntu 24.04 ships curl 8.5+.
           CURL_OUT=$(curl --silent --location --max-redirs 10 \
+            --user-agent "Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0" \
             --write-out '%{exitcode} %{http_code} %{url_effective}' \
             --connect-timeout 15 \
             --max-time 60 \
@@ -103,11 +105,13 @@ jobs:
           REDIRECT_URL="https://download.ebz.epson.net/dsc/du/02/DriverDownloadInfo.do?LG2=JA&CN2=US&CTI=177&PRN=Linux%20rpm%2064bit%20package&OSC=LX&DL"
 
           # Follow redirects to find the current download URL.
-          # A GET request (not HEAD) is required because Epson's portal servlet
-          # returns HTTP 403 for HEAD requests.  The file body is discarded to
+          # Epson's portal servlet blocks both HEAD requests and the default
+          # curl User-Agent with HTTP 403.  A browser-like User-Agent and a
+          # full GET are required.  The response body is discarded to
           # /dev/null; only the final effective URL is captured.
           # %{exitcode} requires curl 7.75+; Ubuntu 24.04 ships curl 8.5+.
           CURL_OUT=$(curl --silent --location --max-redirs 10 \
+            --user-agent "Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0" \
             --write-out '%{exitcode} %{http_code} %{url_effective}' \
             --connect-timeout 15 \
             --max-time 60 \
