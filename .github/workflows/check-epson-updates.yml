@@ -63,8 +63,10 @@ jobs:
           API_URL+="?device_id=L3250%20Series&os=RPM&region=US&language=en"
 
           echo "Querying Epson Download Center API..."
+          # IMPORTANT: Akamai WAF blocks UAs containing "Mozilla" (including real
+          # browser UAs). Use a simple browser name like 'Firefox' instead.
           API_JSON=$(curl --silent --location --max-time 30 --connect-timeout 15 \
-            --user-agent "Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0" \
+            --user-agent "Firefox" \
             "${API_URL}" 2>/dev/null) || true
 
           if [ -z "${API_JSON}" ] || ! echo "${API_JSON}" | jq -e '.items' > /dev/null 2>&1; then
