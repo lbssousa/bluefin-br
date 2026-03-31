@@ -44,7 +44,7 @@ jobs:
           # Look for a download link containing the source RPM filename.
           # The page may use download-center.epson.com or download*.ebz.epson.net URLs.
           DOWNLOAD_URL=$(echo "${PAGE_HTML}" \
-            | grep -oP 'https?://[^"'\''<>]+epson-inkjet-printer-escpr-[0-9][^"'\''<>]*\.src\.rpm' \
+            | grep -oP 'https?://[^"\x27<>\s]+epson-inkjet-printer-escpr-[0-9][^"\x27<>\s]*\.src\.rpm' \
             | head -1) || true
 
           if [ -z "${DOWNLOAD_URL}" ]; then
@@ -100,7 +100,7 @@ jobs:
 
           # Look for a download link containing the x86_64 RPM filename.
           DOWNLOAD_URL=$(echo "${PAGE_HTML}" \
-            | grep -oP 'https?://[^"'\''<>]+epson-printer-utility-[0-9][^"'\''<>]*\.x86_64\.rpm' \
+            | grep -oP 'https?://[^"\x27<>\s]+epson-printer-utility-[0-9][^"\x27<>\s]*\.x86_64\.rpm' \
             | head -1) || true
 
           if [ -z "${DOWNLOAD_URL}" ]; then
