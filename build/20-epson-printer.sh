@@ -15,7 +15,12 @@ set -eoux pipefail
 #    Source: https://support.epson.net/linux/Printer/LSB_distribution_pages/en/utility.php
 #    Installed from Epson's binary RPM package.
 #
-# Version update: run `.github/workflows/check-epson-updates.yml`
+# Version update:
+#   - CI: `.github/workflows/check-epson-updates.yml` (Epson API + AUR fallback)
+#   - Local: `./scripts/check-epson-updates.sh --update`
+#
+# Downloads use `-A 'Mozilla'` User-Agent to satisfy Akamai CDN/WAF.
+# See AUR discussion: https://aur.archlinux.org/packages/epson-inkjet-printer-escpr
 ###############################################################################
 
 # ── Pinned versions ────────────────────────────────────────────────────────
@@ -54,7 +59,7 @@ echo "::group:: Build and Install epson-inkjet-printer-escpr ${ESCPR_VERSION}"
 ESCPR_BUILD_DIR=$(mktemp -d)
 trap 'rm -rf "${ESCPR_BUILD_DIR}"' EXIT
 
-curl -L --fail --output "${ESCPR_BUILD_DIR}/epson-inkjet-printer-escpr.src.rpm" \
+curl -L --fail -A 'Mozilla' --output "${ESCPR_BUILD_DIR}/epson-inkjet-printer-escpr.src.rpm" \
     "${ESCPR_SRPM_URL}"
 
 pushd "${ESCPR_BUILD_DIR}"
@@ -82,7 +87,7 @@ echo "::group:: Install epson-printer-utility ${UTILITY_VERSION}"
 
 UTILITY_RPM="${ESCPR_BUILD_DIR}/epson-printer-utility.x86_64.rpm"
 
-curl -L --fail --output "${UTILITY_RPM}" \
+curl -L --fail -A 'Mozilla' --output "${UTILITY_RPM}" \
     "${UTILITY_RPM_URL}"
 
 # Install the binary RPM:
