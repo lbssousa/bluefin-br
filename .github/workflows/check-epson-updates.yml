@@ -23,51 +23,38 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Redirect URL from Epson's download portal for ESC/P-R source RPM
-          # Parameters:
-          #   LG2=JA  - Language (Japanese site, but works globally)
-          #   CN2=US  - Country
-          #   CTI=176 - Content type ID for epson-inkjet-printer-escpr source RPM
-          #   PRN=... - Product name description
-          #   OSC=LX  - OS code for Linux
-          #   DL      - Trigger download redirect
-          REDIRECT_URL="https://download.ebz.epson.net/dsc/du/02/DriverDownloadInfo.do?LG2=JA&CN2=US&CTI=176&PRN=Linux%20src.rpm%20package&OSC=LX&DL"
+          # Epson LSB distribution page for ESC/P-R source RPM.
+          # This page lists the current driver version and download links.
+          LSB_PAGE_URL="https://support.epson.net/linux/Printer/LSB_distribution_pages/en/escpr.php"
 
-          # Follow redirects to find the current download URL.
-          # Epson's portal servlet blocks both HEAD requests and the default
-          # curl User-Agent with HTTP 403.  A browser-like User-Agent and a
-          # full GET are required.  The response body is discarded to
-          # /dev/null; only the final effective URL is captured.
-          # %{exitcode} requires curl 7.75+; Ubuntu 24.04 ships curl 8.5+.
-          CURL_OUT=$(curl --silent --location --max-redirs 10 \
+          # Fetch the page. A browser-like User-Agent avoids potential blocks.
+          PAGE_HTML=$(curl --silent --location --max-redirs 5 \
             --user-agent "Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0" \
-            --write-out '%{exitcode} %{http_code} %{url_effective}' \
             --connect-timeout 15 \
             --max-time 60 \
-            --output /dev/null \
-            "${REDIRECT_URL}" 2>/dev/null || true)
+            "${LSB_PAGE_URL}" 2>/dev/null) || true
 
-          # Parse space-separated output: exitcode, http_code, url_effective
-          CURL_EXIT="${CURL_OUT%% *}"
-          CURL_REST="${CURL_OUT#* }"
-          HTTP_CODE="${CURL_REST%% *}"
-          FINAL_URL="${CURL_REST#* }"
-
-          if [ "${CURL_EXIT}" != "0" ]; then
-            echo "::warning::Epson download portal unreachable for escpr (curl exit ${CURL_EXIT}, DNS or network failure) - cannot check for updates"
+          if [ -z "${PAGE_HTML}" ]; then
+            echo "::warning::Could not fetch Epson ESC/P-R LSB page - skipping update check"
             echo "new_url=" >> "${GITHUB_OUTPUT}"
             echo "new_version=" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
 
-          if [ -z "${FINAL_URL}" ] || [[ "${FINAL_URL}" == *"DriverDownloadInfo"* ]]; then
-            echo "::warning::Epson download portal did not redirect to a download URL for escpr (HTTP ${HTTP_CODE}) - skipping"
+          # Look for a download link containing the source RPM filename.
+          # The page may use download-center.epson.com or download*.ebz.epson.net URLs.
+          DOWNLOAD_URL=$(echo "${PAGE_HTML}" \
+            | grep -oP 'https?://[^"'\''<>]+epson-inkjet-printer-escpr-[0-9][^"'\''<>]*\.src\.rpm' \
+            | head -1) || true
+
+          if [ -z "${DOWNLOAD_URL}" ]; then
+            echo "::warning::Could not find ESC/P-R source RPM download link on the Epson LSB page - skipping"
             echo "new_url=" >> "${GITHUB_OUTPUT}"
             echo "new_version=" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
 
-          FILENAME=$(basename "${FINAL_URL}")
+          FILENAME=$(basename "${DOWNLOAD_URL}")
           NEW_VERSION=$(echo "${FILENAME}" | grep -oP '\d+\.\d+\.\d+' | head -1)
           if [ -z "${NEW_VERSION}" ]; then
             echo "Could not extract version from filename: ${FILENAME}"
@@ -81,7 +68,7 @@ jobs:
           echo "Available escpr version: ${NEW_VERSION}"
 
           if [ "${NEW_VERSION}" != "${CURRENT_VERSION}" ]; then
-            echo "new_url=${FINAL_URL}" >> "${GITHUB_OUTPUT}"
+            echo "new_url=${DOWNLOAD_URL}" >> "${GITHUB_OUTPUT}"
             echo "new_version=${NEW_VERSION}" >> "${GITHUB_OUTPUT}"
           else
             echo "escpr is up to date (${CURRENT_VERSION})"
@@ -94,51 +81,36 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Redirect URL from Epson's download portal for printer utility RPM 64-bit
-          # Parameters:
-          #   LG2=JA  - Language (Japanese site, but works globally)
-          #   CN2=US  - Country
-          #   CTI=177 - Content type ID for epson-printer-utility x86_64 RPM
-          #   PRN=... - Product name description
-          #   OSC=LX  - OS code for Linux
-          #   DL      - Trigger download redirect
-          REDIRECT_URL="https://download.ebz.epson.net/dsc/du/02/DriverDownloadInfo.do?LG2=JA&CN2=US&CTI=177&PRN=Linux%20rpm%2064bit%20package&OSC=LX&DL"
+          # Epson LSB distribution page for the printer utility RPM.
+          LSB_PAGE_URL="https://support.epson.net/linux/Printer/LSB_distribution_pages/en/utility.php"
 
-          # Follow redirects to find the current download URL.
-          # Epson's portal servlet blocks both HEAD requests and the default
-          # curl User-Agent with HTTP 403.  A browser-like User-Agent and a
-          # full GET are required.  The response body is discarded to
-          # /dev/null; only the final effective URL is captured.
-          # %{exitcode} requires curl 7.75+; Ubuntu 24.04 ships curl 8.5+.
-          CURL_OUT=$(curl --silent --location --max-redirs 10 \
+          # Fetch the page. A browser-like User-Agent avoids potential blocks.
+          PAGE_HTML=$(curl --silent --location --max-redirs 5 \
             --user-agent "Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0" \
-            --write-out '%{exitcode} %{http_code} %{url_effective}' \
             --connect-timeout 15 \
             --max-time 60 \
-            --output /dev/null \
-            "${REDIRECT_URL}" 2>/dev/null || true)
+            "${LSB_PAGE_URL}" 2>/dev/null) || true
 
-          # Parse space-separated output: exitcode, http_code, url_effective
-          CURL_EXIT="${CURL_OUT%% *}"
-          CURL_REST="${CURL_OUT#* }"
-          HTTP_CODE="${CURL_REST%% *}"
-          FINAL_URL="${CURL_REST#* }"
-
-          if [ "${CURL_EXIT}" != "0" ]; then
-            echo "::warning::Epson download portal unreachable for printer-utility (curl exit ${CURL_EXIT}, DNS or network failure) - cannot check for updates"
+          if [ -z "${PAGE_HTML}" ]; then
+            echo "::warning::Could not fetch Epson printer-utility LSB page - skipping update check"
             echo "new_url=" >> "${GITHUB_OUTPUT}"
             echo "new_version=" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
 
-          if [ -z "${FINAL_URL}" ] || [[ "${FINAL_URL}" == *"DriverDownloadInfo"* ]]; then
-            echo "::warning::Epson download portal did not redirect to a download URL for printer-utility (HTTP ${HTTP_CODE}) - skipping"
+          # Look for a download link containing the x86_64 RPM filename.
+          DOWNLOAD_URL=$(echo "${PAGE_HTML}" \
+            | grep -oP 'https?://[^"'\''<>]+epson-printer-utility-[0-9][^"'\''<>]*\.x86_64\.rpm' \
+            | head -1) || true
+
+          if [ -z "${DOWNLOAD_URL}" ]; then
+            echo "::warning::Could not find printer-utility RPM download link on the Epson LSB page - skipping"
             echo "new_url=" >> "${GITHUB_OUTPUT}"
             echo "new_version=" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
 
-          FILENAME=$(basename "${FINAL_URL}")
+          FILENAME=$(basename "${DOWNLOAD_URL}")
           NEW_VERSION=$(echo "${FILENAME}" | grep -oP '\d+\.\d+\.\d+' | head -1)
           if [ -z "${NEW_VERSION}" ]; then
             echo "Could not extract version from filename: ${FILENAME}"
@@ -152,7 +124,7 @@ jobs:
           echo "Available utility version: ${NEW_VERSION}"
 
           if [ "${NEW_VERSION}" != "${CURRENT_VERSION}" ]; then
-            echo "new_url=${FINAL_URL}" >> "${GITHUB_OUTPUT}"
+            echo "new_url=${DOWNLOAD_URL}" >> "${GITHUB_OUTPUT}"
             echo "new_version=${NEW_VERSION}" >> "${GITHUB_OUTPUT}"
           else
             echo "printer-utility is up to date (${CURRENT_VERSION})"

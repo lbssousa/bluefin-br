@@ -20,12 +20,12 @@ set -eoux pipefail
 
 # ── Pinned versions ────────────────────────────────────────────────────────
 # renovate: datasource=custom.epson-escpr
-ESCPR_VERSION="1.8.6"
-ESCPR_SRPM_URL="https://download3.ebz.epson.net/dsc/f/03/00/16/21/79/6d53e6ec3f8c1e55733eb7860e992a425883bf88/epson-inkjet-printer-escpr-${ESCPR_VERSION}-1.src.rpm"
+ESCPR_VERSION="1.8.8"
+ESCPR_SRPM_URL="https://download-center.epson.com/f/module/e934c1f6-0fc1-43e5-8d3e-0de8f3a3d357/epson-inkjet-printer-escpr-${ESCPR_VERSION}-1.src.rpm"
 
 # renovate: datasource=custom.epson-printer-utility
-UTILITY_VERSION="1.1.3"
-UTILITY_RPM_URL="https://download3.ebz.epson.net/dsc/f/03/00/15/43/24/e0c56348985648be318592edd35955672826bf2c/epson-printer-utility-${UTILITY_VERSION}-1.x86_64.rpm"
+UTILITY_VERSION="1.2.2"
+UTILITY_RPM_URL="https://download-center.epson.com/f/module/0fd7dd73-92c2-451e-88cf-cf385e0f6db7/epson-printer-utility-${UTILITY_VERSION}-1.x86_64.rpm"
 # ──────────────────────────────────────────────────────────────────────────
 
 echo "::group:: Install Build Dependencies for ESC/P-R Driver"
