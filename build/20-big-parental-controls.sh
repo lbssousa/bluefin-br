@@ -82,6 +82,9 @@ chmod +x /usr/lib/big-parental-controls/acl-reapply 2>/dev/null || true
 chmod +x /usr/lib/big-parental-controls/time-check 2>/dev/null || true
 chmod +x /usr/lib/big-parental-controls/pam-time-message 2>/dev/null || true
 
+# Update the GTK icon cache so GNOME Shell can find the new icon
+gtk-update-icon-cache -f -t /usr/share/icons/hicolor
+
 # Create persistent state directories (writable /var at runtime)
 install -dm755 /var/lib/big-parental-controls
 install -dm700 /var/lib/big-parental-controls/activity
