@@ -3,7 +3,7 @@
 #
 # Tag scheme (mirrors Bluefin, see https://docs.projectbluefin.io/blog/unifying-bluefin/):
 #   stable-daily        - every daily build from the stable base
-#   NN.YYYYMMDD         - timestamp tag (NN = Fedora major version)
+#   NN.YYYYMMDD[.B]     - timestamp tag (NN = Fedora version, B = build number for same-day rebuilds)
 #   stable              - weekly "promoted" stable build (every Tuesday)
 #
 # Image variants built per stream:
@@ -130,7 +130,26 @@ jobs:
           BASE_IMAGE_DIGEST=$(yq -r '.images[] | select(.name == "${{ matrix.image_versions_key }}") | .digest' image-versions.yml)
           COMMON_IMAGE_DIGEST=$(yq -r '.images[] | select(.name == "common") | .digest' image-versions.yml)
           BREW_IMAGE_DIGEST=$(yq -r '.images[] | select(.name == "brew") | .digest' image-versions.yml)
-          FEDORA_MAJOR_VERSION=$(yq -r '.images[] | select(.name == "${{ matrix.image_versions_key }}") | .tag' image-versions.yml)
+
+          # Resolve the real Fedora major version from the base image OCI labels,
+          # following the same pattern as upstream Bluefin (skopeo inspect + jq).
+          # The tag in image-versions.yml may be "latest" or "next" (a stream name),
+          # not the numeric Fedora version needed for timestamp tags.
+          IMAGE_TAG=$(yq -r '.images[] | select(.name == "${{ matrix.image_versions_key }}") | .tag' image-versions.yml)
+          if [[ "${IMAGE_TAG}" =~ ^[0-9]+$ ]]; then
+            FEDORA_MAJOR_VERSION="${IMAGE_TAG}"
+          else
+            FEDORA_MAJOR_VERSION=$(skopeo inspect --retry-times 3 \
+              "docker://ghcr.io/ublue-os/${{ matrix.base_image_name }}-main@${BASE_IMAGE_DIGEST}" \
+              | jq -r '.Labels["org.opencontainers.image.version"]' \
+              | grep -oP '^[0-9]+')
+          fi
+
+          if [ -z "${FEDORA_MAJOR_VERSION}" ]; then
+            echo "::error::Failed to resolve Fedora major version from base image labels"
+            exit 1
+          fi
+
           echo "BASE_IMAGE_DIGEST=${BASE_IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "COMMON_IMAGE_DIGEST=${COMMON_IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "BREW_IMAGE_DIGEST=${BREW_IMAGE_DIGEST}" >> $GITHUB_ENV
@@ -148,14 +167,39 @@ jobs:
             echo "AKMODS_NVIDIA_DIGEST=${AKMODS_NVIDIA_DIGEST}" >> $GITHUB_ENV
           fi
 
+      - name: Determine timestamp tag
+        run: |
+          # Build the base version tag: NN.YYYYMMDD
+          BASE_VER="${FEDORA_MAJOR_VERSION}.$(date -u +%Y%m%d)"
+
+          # Query existing tags from the registry to compute the build number,
+          # following the same pattern as upstream Bluefin (skopeo list-tags + point release).
+          # If the base version already exists, append .1, .2, etc.
+          REPO="${IMAGE_REGISTRY}/${IMAGE_NAME}"
+          if skopeo list-tags "docker://${REPO}" > /tmp/repotags.json 2>/dev/null; then
+            if [[ $(jq "any(.Tags[]; contains(\"${BASE_VER}\"))" < /tmp/repotags.json) == "true" ]]; then
+              POINT=1
+              while jq -e "any(.Tags[]; contains(\"${BASE_VER}.${POINT}\"))" < /tmp/repotags.json > /dev/null 2>&1; do
+                (( POINT++ ))
+              done
+              TIMESTAMP_TAG="${BASE_VER}.${POINT}"
+            else
+              TIMESTAMP_TAG="${BASE_VER}"
+            fi
+          else
+            # Registry not reachable or image doesn't exist yet (first build)
+            TIMESTAMP_TAG="${BASE_VER}"
+          fi
+
+          echo "TIMESTAMP_TAG=${TIMESTAMP_TAG}" >> $GITHUB_ENV
+
       - name: Determine tags
         id: tags
         run: |
           # Every run produces a stable-daily tag.
           # On Tuesdays (schedule) or workflow_dispatch we also promote to stable.
-          DATE=$(date -u +%Y%m%d)
           TODAY=$(date -u +%A)
-          TAGS="stable-daily ${FEDORA_MAJOR_VERSION}.${DATE}"
+          TAGS="stable-daily ${TIMESTAMP_TAG}"
           if [[ "${{ github.event_name }}" == "schedule" && "${TODAY}" == "Tuesday" ]] || \
              [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             TAGS="${TAGS} stable"
@@ -174,7 +218,7 @@ jobs:
         with:
           tags: |
             type=raw,value=stable-daily
-            type=raw,value=${{ env.FEDORA_MAJOR_VERSION }}.{{date 'YYYYMMDD'}}
+            type=raw,value=${{ env.TIMESTAMP_TAG }}
             type=sha,enable=${{ github.event_name == 'pull_request' }}
             type=ref,event=pr
           labels: |
@@ -186,7 +230,7 @@ jobs:
             org.opencontainers.image.title=${{ env.IMAGE_NAME }}
             org.opencontainers.image.url=https://github.com/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}/tree/${{ github.sha }}
             org.opencontainers.image.vendor=${{ github.repository_owner }}
-            org.opencontainers.image.version=${{ env.FEDORA_MAJOR_VERSION }}.{{date 'YYYYMMDD'}}
+            org.opencontainers.image.version=${{ env.TIMESTAMP_TAG }}
             io.artifacthub.package.deprecated=false
             io.artifacthub.package.keywords=${{ env.IMAGE_KEYWORDS }}
             io.artifacthub.package.license=Apache-2.0
