@@ -130,7 +130,21 @@ jobs:
           BASE_IMAGE_DIGEST=$(yq -r '.images[] | select(.name == "${{ matrix.image_versions_key }}") | .digest' image-versions.yml)
           COMMON_IMAGE_DIGEST=$(yq -r '.images[] | select(.name == "common") | .digest' image-versions.yml)
           BREW_IMAGE_DIGEST=$(yq -r '.images[] | select(.name == "brew") | .digest' image-versions.yml)
-          FEDORA_MAJOR_VERSION=$(yq -r '.images[] | select(.name == "${{ matrix.image_versions_key }}") | .tag' image-versions.yml)
+
+          # Resolve the real Fedora major version from the base image OCI labels,
+          # following the same pattern as upstream Bluefin (skopeo inspect + jq).
+          # The tag in image-versions.yml may be "latest" or "next" (a stream name),
+          # not the numeric Fedora version needed for timestamp tags.
+          IMAGE_TAG=$(yq -r '.images[] | select(.name == "${{ matrix.image_versions_key }}") | .tag' image-versions.yml)
+          if [[ "${IMAGE_TAG}" =~ ^[0-9]+$ ]]; then
+            FEDORA_MAJOR_VERSION="${IMAGE_TAG}"
+          else
+            FEDORA_MAJOR_VERSION=$(skopeo inspect --retry-times 3 \
+              "docker://ghcr.io/ublue-os/${{ matrix.base_image_name }}-main@${BASE_IMAGE_DIGEST}" \
+              | jq -r '.Labels["org.opencontainers.image.version"]' \
+              | grep -oP '^[0-9]+')
+          fi
+
           echo "BASE_IMAGE_DIGEST=${BASE_IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "COMMON_IMAGE_DIGEST=${COMMON_IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "BREW_IMAGE_DIGEST=${BREW_IMAGE_DIGEST}" >> $GITHUB_ENV
