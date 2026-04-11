@@ -74,6 +74,23 @@ cp /ctx/custom/flatpaks/*.preinstall /etc/flatpak/preinstall.d/
 
 echo "::endgroup::"
 
+echo "::group:: Remove Packages"
+
+# Remove packages not present in upstream Bluefin
+EXCLUDED_PACKAGES=(
+    gnome-software
+    gnome-software-rpm-ostree
+)
+
+readarray -t INSTALLED_EXCLUDED < <(rpm -qa --queryformat='%{NAME}\n' "${EXCLUDED_PACKAGES[@]}" 2>/dev/null || true)
+if [[ "${#INSTALLED_EXCLUDED[@]}" -gt 0 ]]; then
+    dnf5 remove -y "${INSTALLED_EXCLUDED[@]}"
+else
+    echo "No excluded packages found to remove."
+fi
+
+echo "::endgroup::"
+
 echo "::group:: Install Packages"
 
 # Install packages using dnf5
