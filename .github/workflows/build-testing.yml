@@ -147,6 +147,11 @@ jobs:
               | grep -oP '^[0-9]+')
           fi
 
+          if [ -z "${FEDORA_MAJOR_VERSION}" ]; then
+            echo "::error::Failed to resolve Fedora major version from base image labels"
+            exit 1
+          fi
+
           echo "BASE_IMAGE_DIGEST=${BASE_IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "COMMON_IMAGE_DIGEST=${COMMON_IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "BREW_IMAGE_DIGEST=${BREW_IMAGE_DIGEST}" >> $GITHUB_ENV
