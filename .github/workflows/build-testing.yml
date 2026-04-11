@@ -3,7 +3,7 @@
 #
 # Tag scheme (mirrors Bluefin, see https://docs.projectbluefin.io/blog/unifying-bluefin/):
 #   testing             - every build from the current Fedora release
-#   testing.YYYYMMDD
+#   NN.YYYYMMDD         - timestamp tag (NN = Fedora major version)
 #
 # Triggers on every push to main so users always have an up-to-date testing image.
 #
@@ -137,6 +137,7 @@ jobs:
           echo "COMMON_IMAGE_DIGEST=${COMMON_IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "BREW_IMAGE_DIGEST=${BREW_IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "FEDORA_MAJOR_VERSION=${FEDORA_MAJOR_VERSION}" >> $GITHUB_ENV
+          echo "TIMESTAMP_TAG=${FEDORA_MAJOR_VERSION}.$(date -u +%Y%m%d)" >> $GITHUB_ENV
           if [ -n "${{ matrix.akmods_versions_key }}" ]; then
             if [ -n "${{ matrix.akmods_addons_versions_key }}" ]; then
               AKMODS_TAG=$(yq -r '.images[] | select(.name == "${{ matrix.akmods_addons_versions_key }}") | .tag' image-versions.yml)
@@ -160,7 +161,7 @@ jobs:
         with:
           tags: |
             type=raw,value=testing
-            type=raw,value=testing.{{date 'YYYYMMDD'}}
+            type=raw,value=${{ env.TIMESTAMP_TAG }}
             type=sha,enable=${{ github.event_name == 'pull_request' }}
             type=ref,event=pr
           labels: |
@@ -172,7 +173,7 @@ jobs:
             org.opencontainers.image.title=${{ env.IMAGE_NAME }}
             org.opencontainers.image.url=https://github.com/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}/tree/${{ github.sha }}
             org.opencontainers.image.vendor=${{ github.repository_owner }}
-            org.opencontainers.image.version=testing.{{date 'YYYYMMDD'}}
+            org.opencontainers.image.version=${{ env.TIMESTAMP_TAG }}
             io.artifacthub.package.deprecated=false
             io.artifacthub.package.keywords=${{ env.IMAGE_KEYWORDS }}
             io.artifacthub.package.license=Apache-2.0

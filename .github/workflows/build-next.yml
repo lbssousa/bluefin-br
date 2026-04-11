@@ -3,7 +3,7 @@
 #
 # Tag scheme (mirrors Bluefin, see https://docs.projectbluefin.io/blog/unifying-bluefin/):
 #   next                - weekly build from the next Fedora release (pre-release / rawhide)
-#   next.YYYYMMDD
+#   NN.YYYYMMDD         - timestamp tag (NN = Fedora major version)
 #
 # Requires "silverblue-main-next" in image-versions.yml pointing to the next Fedora base image.
 #
@@ -126,6 +126,7 @@ jobs:
           echo "COMMON_IMAGE_DIGEST=${COMMON_IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "BREW_IMAGE_DIGEST=${BREW_IMAGE_DIGEST}" >> $GITHUB_ENV
           echo "FEDORA_MAJOR_VERSION=${FEDORA_MAJOR_VERSION}" >> $GITHUB_ENV
+          echo "TIMESTAMP_TAG=${FEDORA_MAJOR_VERSION}.$(date -u +%Y%m%d)" >> $GITHUB_ENV
           if [ -n "${{ matrix.akmods_versions_key }}" ]; then
             if [ -n "${{ matrix.akmods_addons_versions_key }}" ]; then
               AKMODS_TAG=$(yq -r '.images[] | select(.name == "${{ matrix.akmods_addons_versions_key }}") | .tag' image-versions.yml)
@@ -149,7 +150,7 @@ jobs:
         with:
           tags: |
             type=raw,value=next
-            type=raw,value=next.{{date 'YYYYMMDD'}}
+            type=raw,value=${{ env.TIMESTAMP_TAG }}
           labels: |
             io.artifacthub.package.readme-url=https://raw.githubusercontent.com/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}/${{ github.sha }}/README.md
             org.opencontainers.image.created=${{ steps.date.outputs.date }}
@@ -159,7 +160,7 @@ jobs:
             org.opencontainers.image.title=${{ env.IMAGE_NAME }}
             org.opencontainers.image.url=https://github.com/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}/tree/${{ github.sha }}
             org.opencontainers.image.vendor=${{ github.repository_owner }}
-            org.opencontainers.image.version=next.{{date 'YYYYMMDD'}}
+            org.opencontainers.image.version=${{ env.TIMESTAMP_TAG }}
             io.artifacthub.package.deprecated=false
             io.artifacthub.package.keywords=${{ env.IMAGE_KEYWORDS }}
             io.artifacthub.package.license=Apache-2.0

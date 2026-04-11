@@ -3,9 +3,8 @@
 #
 # Tag scheme (mirrors Bluefin, see https://docs.projectbluefin.io/blog/unifying-bluefin/):
 #   stable-daily        - every daily build from the stable base
-#   stable-daily.YYYYMMDD
+#   NN.YYYYMMDD         - timestamp tag (NN = Fedora major version)
 #   stable              - weekly "promoted" stable build (every Tuesday)
-#   stable.YYYYMMDD
 #
 # Image variants built per stream:
 #   bluefin-br              - base image (Silverblue + BR customisations)
@@ -156,10 +155,10 @@ jobs:
           # On Tuesdays (schedule) or workflow_dispatch we also promote to stable.
           DATE=$(date -u +%Y%m%d)
           TODAY=$(date -u +%A)
-          TAGS="stable-daily stable-daily.${DATE}"
+          TAGS="stable-daily ${FEDORA_MAJOR_VERSION}.${DATE}"
           if [[ "${{ github.event_name }}" == "schedule" && "${TODAY}" == "Tuesday" ]] || \
              [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            TAGS="${TAGS} stable stable.${DATE}"
+            TAGS="${TAGS} stable"
           fi
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
           # Use stable-daily as the primary build tag
@@ -175,7 +174,7 @@ jobs:
         with:
           tags: |
             type=raw,value=stable-daily
-            type=raw,value=stable-daily.{{date 'YYYYMMDD'}}
+            type=raw,value=${{ env.FEDORA_MAJOR_VERSION }}.{{date 'YYYYMMDD'}}
             type=sha,enable=${{ github.event_name == 'pull_request' }}
             type=ref,event=pr
           labels: |
@@ -187,7 +186,7 @@ jobs:
             org.opencontainers.image.title=${{ env.IMAGE_NAME }}
             org.opencontainers.image.url=https://github.com/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}/tree/${{ github.sha }}
             org.opencontainers.image.vendor=${{ github.repository_owner }}
-            org.opencontainers.image.version=stable-daily.{{date 'YYYYMMDD'}}
+            org.opencontainers.image.version=${{ env.FEDORA_MAJOR_VERSION }}.{{date 'YYYYMMDD'}}
             io.artifacthub.package.deprecated=false
             io.artifacthub.package.keywords=${{ env.IMAGE_KEYWORDS }}
             io.artifacthub.package.license=Apache-2.0
