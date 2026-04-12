@@ -56,6 +56,11 @@ echo "::endgroup::"
 
 echo "::group:: Build libfprint with Goodix TLS drivers"
 
+# Disable ccache for this build: the /var/cache mount is shared across all
+# parallel image-variant builds, and concurrent ccache processes conflict
+# with "File exists" errors when writing to the same hash files.
+export CCACHE_DISABLE=1
+
 meson setup builddir \
     --prefix=/usr \
     --libdir=/usr/lib64 \
@@ -67,6 +72,8 @@ meson setup builddir \
     -Dudev_hwdb=disabled
 
 meson compile -C builddir
+
+unset CCACHE_DISABLE
 
 echo "::endgroup::"
 
