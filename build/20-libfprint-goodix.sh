@@ -52,6 +52,22 @@ git clone --branch unstable "${LIBFPRINT_GOODIX_URL}" "${LIBFPRINT_BUILD_DIR}/li
 cd "${LIBFPRINT_BUILD_DIR}/libfprint"
 git checkout "${LIBFPRINT_GOODIX_COMMIT}"
 
+# Fix GCC 14 incompatible-pointer-types errors (treated as hard errors since GCC 14).
+# In goodix52xd.c and goodix53xd.c, `payload` is `guint8[]` so `&payload` yields
+# `guint8(*)[N]` instead of the expected `guint8*`.  Dropping the `&` lets the array
+# decay to `guint8*` as required.
+# In goodix511.c, `payload` is a `GoodixDefault` struct so we need an explicit cast.
+sed -i \
+    -e 's/goodix_tls_read_image(dev, \&payload, sizeof(payload), on_scan_empty_img, ssm)/goodix_tls_read_image(dev, payload, sizeof(payload), on_scan_empty_img, ssm)/' \
+    -e 's/goodix_tls_read_image(dev, \&payload, sizeof(payload), scan_on_read_img, ssm)/goodix_tls_read_image(dev, payload, sizeof(payload), scan_on_read_img, ssm)/' \
+    libfprint/drivers/goodixtls/goodix52xd.c \
+    libfprint/drivers/goodixtls/goodix53xd.c
+
+sed -i \
+    -e 's/goodix_tls_read_image(dev, \&payload, sizeof(payload), on_scan_empty_img, ssm)/goodix_tls_read_image(dev, (guint8*)\&payload, sizeof(payload), on_scan_empty_img, ssm)/' \
+    -e 's/goodix_tls_read_image(dev, \&payload, sizeof(payload), scan_on_read_img, ssm)/goodix_tls_read_image(dev, (guint8*)\&payload, sizeof(payload), scan_on_read_img, ssm)/' \
+    libfprint/drivers/goodixtls/goodix511.c
+
 echo "::endgroup::"
 
 echo "::group:: Build libfprint with Goodix TLS drivers"
