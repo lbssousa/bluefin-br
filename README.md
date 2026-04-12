@@ -11,6 +11,7 @@ Here are the changes from Bluefin. This image is based on [Bluefin](https://proj
 - **Runtime dependencies**: `python3-gobject`, `gtk4`, `libadwaita`, `malcontent`, `accountsservice`, `polkit`, `acl`, `nftables`
 - **Epson Inkjet Printer Driver (ESC/P-R)** (`epson-inkjet-printer-escpr`): Legacy Epson inkjet driver for printers that are **not** compatible with the newer `escpr2` driver. Built from Epson's source RPM for compatibility with modern Fedora. See [Epson Linux support page](https://support.epson.net/linux/Printer/LSB_distribution_pages/en/escpr.php).
 - **Epson Printer Utility** (`epson-printer-utility`): Graphical utility for printer maintenance tasks such as nozzle check, print head cleaning, and ink level monitoring. Installed from Epson's official binary RPM. See [Epson Linux support page](https://support.epson.net/linux/Printer/LSB_distribution_pages/en/utility.php).
+- **libfprint with Goodix 538d support**: Custom build of [libfprint](https://fprint.freedesktop.org/) from the [Infinytum fork](https://github.com/infinytum/libfprint/tree/unstable) that adds community-developed Goodix TLS drivers — including `goodixtls53xd` for the **Goodix 538d** fingerprint reader (USB `27c6:538d`). Replaces the system `libfprint` while preserving ABI compatibility. See also [AUR `libfprint-goodix-521d`](https://aur.archlinux.org/packages/libfprint-goodix-521d) (same fork; the package name references the 521d but the fork includes drivers for the entire Goodix TLS family: 511, 52xd, and 53xd).
 
 ### Enabled Services
 - `big-parental-daemon.service` — Rust D-Bus daemon for ECA Digital age-range signaling
@@ -31,7 +32,7 @@ Here are the changes from Bluefin. This image is based on [Bluefin](https://proj
 - Based on `ghcr.io/ublue-os/silverblue-main:latest` — identical to Bluefin's base
 - `/opt` is an immutable real directory (not a symlink to `/var/opt`) so that packages installed there — such as `epson-printer-utility` — are correctly included in the image layers and deployed by bootc.
 
-*Last updated: 2026-03-22*
+*Last updated: 2026-04-12*
 
 ## Getting Started
 
