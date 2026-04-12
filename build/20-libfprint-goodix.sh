@@ -68,6 +68,12 @@ sed -i \
     -e 's/goodix_tls_read_image(dev, \&payload, sizeof(payload), scan_on_read_img, ssm)/goodix_tls_read_image(dev, (guint8*)\&payload, sizeof(payload), scan_on_read_img, ssm)/' \
     libfprint/drivers/goodixtls/goodix511.c
 
+# In goodix.c, `data` is `guint8*` but is assigned to a `GoodixPresetPskResponse*`
+# without a cast.  Add an explicit cast to suppress the GCC 14 hard error.
+sed -i \
+    -e 's/GoodixPresetPskResponse\* response = data + sizeof(guint8);/GoodixPresetPskResponse* response = (GoodixPresetPskResponse*)(data + sizeof(guint8));/' \
+    libfprint/drivers/goodixtls/goodix.c
+
 echo "::endgroup::"
 
 echo "::group:: Build libfprint with Goodix TLS drivers"
