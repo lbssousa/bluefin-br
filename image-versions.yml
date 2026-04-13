@@ -1,46 +1,45 @@
 images:
   - name: silverblue-main
     image: ghcr.io/ublue-os/silverblue-main
-    tag: latest
-    digest: sha256:c2ea2411fcab64e9dda37159e2922801bd57c632672737c6d3e9ae008b56d430
+    tag: "44"
+    digest: sha256:4c556548c3c8f59a059e923d2e61d633bc4e3318e8a5fabe18ead6ebbfe45c25
   - name: silverblue-main-next
     image: ghcr.io/ublue-os/silverblue-main
-    tag: next
-    # Placeholder: Renovate will update this to the actual digest once the :next tag exists upstream.
-    # The :next tag tracks the upcoming (pre-release) Fedora version.
-    digest: sha256:c2ea2411fcab64e9dda37159e2922801bd57c632672737c6d3e9ae008b56d430
+    tag: "44"
+    # The :44 tag tracks Fedora 44 (current pre-release / next stream).
+    digest: sha256:4c556548c3c8f59a059e923d2e61d633bc4e3318e8a5fabe18ead6ebbfe45c25
   - name: akmods-main
     image: ghcr.io/ublue-os/akmods
-    tag: main-43
+    tag: main-44
     # Renovate will update this digest automatically.
     # Must match the same Fedora version as silverblue-main and akmods-nvidia-lts-main.
-    digest: sha256:42a7aee6d4864e1a5b9e9e91e94d1454526d8f19efa8a4c2a5ae8acaaf0fa41e
+    digest: sha256:ac1ebda3be0b52a66c84aca7ecf1c02da6bb009ccb6d6942c7c74b1582f5d39c
   - name: akmods-nvidia-lts-main
     image: ghcr.io/ublue-os/akmods-nvidia-lts
-    tag: main-43
+    tag: main-44
     # Renovate will update this digest automatically.
-    digest: sha256:4b623c2c1844ddc98575b2de2374bf6c5e3e2ed12d01ac6b77e505c7f2159519
+    digest: sha256:74253c61ba1b8f4d22d24dc849a68e3f55b0c4289d80cab885c58fecc1424ea2
   - name: akmods-nvidia-open-main
     image: ghcr.io/ublue-os/akmods-nvidia-open
-    tag: main-43
+    tag: main-44
     # Renovate will update this digest automatically.
     # Must match the same Fedora version as silverblue-main and akmods-main.
-    digest: sha256:a5d0b809d8c992e439aef13cb6204588c5123a1b9a1c4d6799b017d2068f5811
+    digest: sha256:e1b025409407aec2b7f94fe166a06635e3a4d958d96d02061d9ca292e37ca7f9
   - name: akmods-main-next
     image: ghcr.io/ublue-os/akmods
-    tag: main-43
-    # Placeholder: Renovate will update this to the actual digest once the :next tag exists upstream.
-    digest: sha256:42a7aee6d4864e1a5b9e9e91e94d1454526d8f19efa8a4c2a5ae8acaaf0fa41e
+    tag: main-44
+    # Renovate will update this digest automatically.
+    digest: sha256:ac1ebda3be0b52a66c84aca7ecf1c02da6bb009ccb6d6942c7c74b1582f5d39c
   - name: akmods-nvidia-lts-main-next
     image: ghcr.io/ublue-os/akmods-nvidia-lts
-    tag: main-43
+    tag: main-44
     # Renovate will update this digest automatically.
-    digest: sha256:4b623c2c1844ddc98575b2de2374bf6c5e3e2ed12d01ac6b77e505c7f2159519
+    digest: sha256:74253c61ba1b8f4d22d24dc849a68e3f55b0c4289d80cab885c58fecc1424ea2
   - name: akmods-nvidia-open-main-next
     image: ghcr.io/ublue-os/akmods-nvidia-open
-    tag: main-43
-    # Placeholder: Renovate will update this to the actual digest once the :next tag exists upstream.
-    digest: sha256:a5d0b809d8c992e439aef13cb6204588c5123a1b9a1c4d6799b017d2068f5811
+    tag: main-44
+    # Renovate will update this digest automatically.
+    digest: sha256:e1b025409407aec2b7f94fe166a06635e3a4d958d96d02061d9ca292e37ca7f9
   - name: common
     image: ghcr.io/projectbluefin/common
     tag: latest
