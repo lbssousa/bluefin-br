@@ -68,6 +68,25 @@ sed -i \
     -e 's/goodix_tls_read_image(dev, \&payload, sizeof(payload), scan_on_read_img, ssm)/goodix_tls_read_image(dev, (guint8*)\&payload, sizeof(payload), scan_on_read_img, ssm)/' \
     libfprint/drivers/goodixtls/goodix511.c
 
+# Fix GCC 14 errors in goodix.c:
+# 1. goodix.c:181 – `data + sizeof(guint8)` yields `guint8*` which cannot implicitly
+#    initialize a `GoodixPresetPskResponse*`; add an explicit cast.
+# 2. goodix.c:935 – `guint8 payload = {0x40, 0x00}` uses a brace-initializer with two
+#    elements for a scalar; change to an array declaration.
+sed -i \
+    -e 's/GoodixPresetPskResponse\* response = data + sizeof(guint8);/GoodixPresetPskResponse* response = (GoodixPresetPskResponse*)(data + sizeof(guint8));/' \
+    -e 's/guint8 payload = {0x40, 0x00};/guint8 payload[] = {0x40, 0x00};/' \
+    libfprint/drivers/goodixtls/goodix.c
+
+# Fix GCC 14 warnings-as-errors in goodixtls.c:
+# 1. goodixtls.c:41 – `err_from_ssl()` is an old-style K&R prototype; add `void`.
+# 2. goodixtls.c:47 – `malloc(strlen(msg))` omits the NUL terminator byte that
+#    `strcpy` writes, causing a `-Wstringop-overflow` error; add +1.
+sed -i \
+    -e 's/static GError\* err_from_ssl()/static GError* err_from_ssl(void)/' \
+    -e 's/err->message = malloc(strlen(msg));/err->message = malloc(strlen(msg) + 1);/' \
+    libfprint/drivers/goodixtls/goodixtls.c
+
 echo "::endgroup::"
 
 echo "::group:: Build libfprint with Goodix TLS drivers"
