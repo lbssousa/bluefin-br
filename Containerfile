@@ -29,9 +29,9 @@
 # 2. Base Image (silverblue-main):
 #    - Fedora version and digest are controlled by FEDORA_MAJOR_VERSION and
 #      BASE_IMAGE_DIGEST build args. These are set per stream:
-#        - stable / stable-daily: pinned to silverblue-main:latest (see image-versions.yml)
+#    - stable / stable-daily: pinned to silverblue-main:44 (see image-versions.yml)
 #        - testing: same base, built more frequently
-#        - next:    silverblue-main:next (see image-versions.yml)
+#        - next:    silverblue-main:44 (see image-versions.yml)
 #
 # Image digests in image-versions.yml are automatically updated by Renovate.
 # Stream definitions: https://docs.projectbluefin.io/blog/unifying-bluefin/
@@ -45,8 +45,8 @@ ARG COMMON_IMAGE_DIGEST="sha256:9409d0c08bf76bdfef52812db61a68453b20b23b52042e81
 ARG BREW_IMAGE="ghcr.io/ublue-os/brew:latest"
 ARG BREW_IMAGE_DIGEST="sha256:fef8b4728cb042f6b69ad9be90a43095261703103fe6c0735c9d6f035065c052"
 ARG BASE_IMAGE_NAME="silverblue"
-ARG FEDORA_MAJOR_VERSION="latest"
-ARG BASE_IMAGE_DIGEST="sha256:c2ea2411fcab64e9dda37159e2922801bd57c632672737c6d3e9ae008b56d430"
+ARG FEDORA_MAJOR_VERSION="44"
+ARG BASE_IMAGE_DIGEST="sha256:4c556548c3c8f59a059e923d2e61d633bc4e3318e8a5fabe18ead6ebbfe45c25"
 ARG IMAGE_FLAVOR="main"
 
 FROM ${COMMON_IMAGE}@${COMMON_IMAGE_DIGEST} AS common
