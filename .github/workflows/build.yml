@@ -358,9 +358,8 @@ jobs:
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
 
-      # OPTIONAL: SBOM Attestation
+      # SBOM Attestation
       # Attaches SBOM (Software Bill of Materials) to your signed image for supply chain security.
-      # Requires image signing to be enabled first (see above).
       # Documentation: https://slsa.dev/spec/v1.0/requirements#provenance-available
 
       - name: Setup Syft

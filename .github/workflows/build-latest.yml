@@ -297,8 +297,8 @@ jobs:
           sudo podman rmi "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}-rechunked"
 
           # Sync rechunked image back to user storage for subsequent steps
+          # Note: keep image in rootful storage too for SBOM generation (podman image mount needs root)
           sudo podman save "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}" | podman load
-          sudo podman rmi "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
 
       - name: Tag for registry
         run: |
@@ -349,3 +349,46 @@ jobs:
           COSIGN_EXPERIMENTAL: false
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+
+      # SBOM Attestation
+      # Attaches SBOM (Software Bill of Materials) to your signed image for supply chain security.
+      # Documentation: https://slsa.dev/spec/v1.0/requirements#provenance-available
+
+      - name: Setup Syft
+        id: setup-syft
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+
+      - name: Generate SBOM
+        id: generate-sbom
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        run: |
+          set -euo pipefail
+          OUTPUT_PATH="$(mktemp -d)/sbom.spdx.json"
+          IMAGE_REF="localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
+          MOUNT_PATH=$(sudo podman image mount "${IMAGE_REF}")
+          trap "sudo podman image umount '${IMAGE_REF}'; sudo podman rmi '${IMAGE_REF}'" EXIT
+          # Run syft with sudo: the mount path is owned by root (created by sudo podman image mount)
+          sudo ${{ steps.setup-syft.outputs.cmd }} scan \
+            "dir:${MOUNT_PATH}" \
+            -o spdx-json="${OUTPUT_PATH}"
+          # Fix ownership so the subsequent cosign attest step can read the file
+          sudo chown "$(id -u):$(id -g)" "${OUTPUT_PATH}"
+          echo "OUTPUT_PATH=${OUTPUT_PATH}" >> $GITHUB_OUTPUT
+
+      - name: Add SBOM Attestation
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        env:
+          IMAGE: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+          COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+          SBOM_OUTPUT: ${{ steps.generate-sbom.outputs.OUTPUT_PATH }}
+        run: |
+          cd "$(dirname "$SBOM_OUTPUT")"
+          cosign attest -y \
+            --predicate "$(basename "$SBOM_OUTPUT")" \
+            --type spdxjson \
+            --key env://COSIGN_PRIVATE_KEY \
+            --tlog-upload=false \
+            "${IMAGE}@${DIGEST}"
