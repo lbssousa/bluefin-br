@@ -7,6 +7,12 @@
   // Do not rebase when the default branch is updated
   "rebaseWhen": "never",
 
+  // Auto-update GNOME extension git submodules when upstream branches advance.
+  // This ensures extensions are updated to versions that declare GNOME compatibility.
+  "gitSubmodules": {
+    "enabled": true
+  },
+
   customManagers: [
     {
       customType: 'regex',
