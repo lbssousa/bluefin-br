@@ -48,6 +48,8 @@ ARG BASE_IMAGE_NAME="silverblue"
 ARG FEDORA_MAJOR_VERSION="44"
 ARG BASE_IMAGE_DIGEST="sha256:4c556548c3c8f59a059e923d2e61d633bc4e3318e8a5fabe18ead6ebbfe45c25"
 ARG IMAGE_FLAVOR="main"
+ARG IMAGE_NAME="bluefin-br"
+ARG IMAGE_TAG="stable-daily"
 
 FROM ${COMMON_IMAGE}@${COMMON_IMAGE_DIGEST} AS common
 FROM ${BREW_IMAGE}@${BREW_IMAGE_DIGEST} AS brew
@@ -73,9 +75,13 @@ FROM ghcr.io/ublue-os/${BASE_IMAGE_NAME}-main:${FEDORA_MAJOR_VERSION}@${BASE_IMA
 ## Alternative GNOME OS base image (uncomment to use):
 # FROM quay.io/gnome_infrastructure/gnome-build-meta:gnomeos-nightly
 
-# Re-declare IMAGE_FLAVOR after FROM so it is available to RUN instructions
+# Re-declare build args after FROM so they are available to RUN instructions
 ARG IMAGE_FLAVOR="main"
+ARG IMAGE_NAME="bluefin-br"
+ARG IMAGE_TAG="stable-daily"
 ENV IMAGE_FLAVOR=${IMAGE_FLAVOR}
+ENV IMAGE_NAME=${IMAGE_NAME}
+ENV IMAGE_TAG=${IMAGE_TAG}
 
 ### MODIFICATIONS
 ## Make modifications desired in your image and install packages by modifying the build scripts.

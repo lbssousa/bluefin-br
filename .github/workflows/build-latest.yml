@@ -249,6 +249,8 @@ jobs:
           build-args: |
             BASE_IMAGE_NAME=${{ matrix.base_image_name }}
             IMAGE_FLAVOR=${{ matrix.image_flavor }}
+            IMAGE_NAME=${{ env.IMAGE_NAME }}
+            IMAGE_TAG=${{ env.DEFAULT_TAG }}
             FEDORA_MAJOR_VERSION=${{ env.FEDORA_MAJOR_VERSION }}
             BASE_IMAGE_DIGEST=${{ env.BASE_IMAGE_DIGEST }}
             COMMON_IMAGE_DIGEST=${{ env.COMMON_IMAGE_DIGEST }}
