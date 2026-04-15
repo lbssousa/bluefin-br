@@ -9,7 +9,7 @@
 
   // Auto-update GNOME extension git submodules when upstream branches advance.
   // This ensures extensions are updated to versions that declare GNOME compatibility.
-  "gitSubmodules": {
+  "git-submodules": {
     "enabled": true
   },
 
