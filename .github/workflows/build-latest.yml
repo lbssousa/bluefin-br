@@ -136,7 +136,7 @@ jobs:
 
           # Resolve the real Fedora major version from the base image OCI labels,
           # following the same pattern as upstream Bluefin (skopeo inspect + jq).
-          # The tag in image-versions.yml may be "latest" or "next" (a stream name),
+          # The tag in image-versions.yml may be "latest" or "beta" (a stream name),
           # not the numeric Fedora version needed for timestamp tags.
           IMAGE_TAG=$(yq -r '.images[] | select(.name == "${{ matrix.image_versions_key }}") | .tag' image-versions.yml)
           if [[ "${IMAGE_TAG}" =~ ^[0-9]+$ ]]; then
@@ -200,7 +200,7 @@ jobs:
         id: tags
         run: |
           VERSION="${TIMESTAMP_TAG}"
-          VERSION_SHORT="${VERSION:3}"
+          VERSION_SHORT="${VERSION#*.}"
           TAGS="latest latest-${TIMESTAMP_TAG} latest-${VERSION_SHORT} ${TIMESTAMP_TAG} ${FEDORA_MAJOR_VERSION}"
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
           echo "DEFAULT_TAG=latest" >> $GITHUB_ENV

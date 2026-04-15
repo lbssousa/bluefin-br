@@ -73,14 +73,14 @@ get_current_versions() {
     local script
     script="$(< "${BUILD_SCRIPT}")"
     CURRENT_ESCPR_VERSION=$(echo "${script}" | grep -oP 'ESCPR_VERSION="\K[0-9.]+')
-    CURRENT_ESCPR_URL=$(echo "${script}" | grep -oP 'ESCPR_SRPM_URL="\K[^"]+')
 }
 
 # ── Query Epson Download Center API ───────────────────────────────────────
 # Returns JSON array of modules for the given device + OS.
 # The API is behind Akamai; a browser User-Agent is required.
 query_epson_api() {
-    local url="${EPSON_API_BASE}?device_id=$(printf '%s' "${EPSON_DEVICE_ID}" | sed 's/ /%20/g')&os=${EPSON_OS}&region=${EPSON_REGION}&language=${EPSON_LANGUAGE}"
+    local url
+    url="${EPSON_API_BASE}?device_id=$(printf '%s' "${EPSON_DEVICE_ID}" | sed 's/ /%20/g')&os=${EPSON_OS}&region=${EPSON_REGION}&language=${EPSON_LANGUAGE}"
     local response
     response=$(curl --silent --location --max-time 30 --connect-timeout 15 \
         --user-agent "${USER_AGENT}" \

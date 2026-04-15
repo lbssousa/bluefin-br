@@ -135,7 +135,7 @@ jobs:
 
           # Resolve the real Fedora major version from the base image OCI labels,
           # following the same pattern as upstream Bluefin (skopeo inspect + jq).
-          # The tag in image-versions.yml may be "latest" or "next" (a stream name),
+          # The tag in image-versions.yml may be "latest" or "beta" (a stream name),
           # not the numeric Fedora version needed for timestamp tags.
           IMAGE_TAG=$(yq -r '.images[] | select(.name == "${{ matrix.image_versions_key }}") | .tag' image-versions.yml)
           if [[ "${IMAGE_TAG}" =~ ^[0-9]+$ ]]; then
@@ -202,8 +202,8 @@ jobs:
           # On Tuesdays (schedule) or workflow_dispatch we also promote to stable and gts.
           TODAY=$(date -u +%A)
           VERSION="${TIMESTAMP_TAG}"
-          # ${VERSION:3} strips the "NN." prefix to get just the date part (YYYYMMDD...)
-          VERSION_SHORT="${VERSION:3}"
+          # Strip "NN." prefix to get just the date part (YYYYMMDD...)
+          VERSION_SHORT="${VERSION#*.}"
           TAGS="stable-daily ${TIMESTAMP_TAG} stable-daily-${TIMESTAMP_TAG} stable-daily-${VERSION_SHORT}"
           if [[ "${{ github.event_name }}" == "schedule" && "${TODAY}" == "Tuesday" ]] || \
              [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
