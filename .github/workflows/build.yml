@@ -2,9 +2,16 @@
 # Builds the "stable" and "stable-daily" image streams.
 #
 # Tag scheme (mirrors Bluefin, see https://docs.projectbluefin.io/blog/unifying-bluefin/):
-#   stable-daily        - every daily build from the stable base
-#   NN.YYYYMMDD[.B]     - timestamp tag (NN = Fedora version, B = build number for same-day rebuilds)
-#   stable              - weekly "promoted" stable build (every Tuesday)
+#   stable-daily               - every daily build from the stable base
+#   stable-daily-NN.YYYYMMDD   - prefixed timestamp for stable-daily
+#   stable-daily-YYYYMMDD      - short prefixed timestamp for stable-daily
+#   NN.YYYYMMDD[.B]            - timestamp tag (NN = Fedora version, B = build number for same-day rebuilds)
+#   stable                     - weekly "promoted" stable build (every Tuesday)
+#   stable-NN.YYYYMMDD         - prefixed timestamp for stable
+#   stable-YYYYMMDD            - short prefixed timestamp for stable
+#   gts                        - alias for stable (guaranteed to be stable)
+#   gts-NN.YYYYMMDD            - prefixed timestamp for gts
+#   gts-YYYYMMDD               - short prefixed timestamp for gts
 #
 # Image variants built per stream:
 #   bluefin-br              - base image (Silverblue + BR customisations)
@@ -24,11 +31,6 @@ on:
       - ".github/workflows/*validate*.yml"
   schedule:
     - cron: '0 1 * * *'    # 01:00 UTC daily  → produces stable-daily
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - "**/README.md"
   workflow_dispatch:
 
 env:
@@ -133,7 +135,7 @@ jobs:
 
           # Resolve the real Fedora major version from the base image OCI labels,
           # following the same pattern as upstream Bluefin (skopeo inspect + jq).
-          # The tag in image-versions.yml may be "latest" or "next" (a stream name),
+          # The tag in image-versions.yml may be "latest" or "beta" (a stream name),
           # not the numeric Fedora version needed for timestamp tags.
           IMAGE_TAG=$(yq -r '.images[] | select(.name == "${{ matrix.image_versions_key }}") | .tag' image-versions.yml)
           if [[ "${IMAGE_TAG}" =~ ^[0-9]+$ ]]; then
@@ -196,13 +198,16 @@ jobs:
       - name: Determine tags
         id: tags
         run: |
-          # Every run produces a stable-daily tag.
-          # On Tuesdays (schedule) or workflow_dispatch we also promote to stable.
+          # Every run produces a stable-daily tag with prefixed timestamps.
+          # On Tuesdays (schedule) or workflow_dispatch we also promote to stable and gts.
           TODAY=$(date -u +%A)
-          TAGS="stable-daily ${TIMESTAMP_TAG}"
+          VERSION="${TIMESTAMP_TAG}"
+          # Strip "NN." prefix to get just the date part (YYYYMMDD...)
+          VERSION_SHORT="${VERSION#*.}"
+          TAGS="stable-daily ${TIMESTAMP_TAG} stable-daily-${TIMESTAMP_TAG} stable-daily-${VERSION_SHORT}"
           if [[ "${{ github.event_name }}" == "schedule" && "${TODAY}" == "Tuesday" ]] || \
              [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            TAGS="${TAGS} stable"
+            TAGS="${TAGS} stable stable-${TIMESTAMP_TAG} stable-${VERSION_SHORT} gts gts-${TIMESTAMP_TAG} gts-${VERSION_SHORT}"
           fi
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
           # Use stable-daily as the primary build tag

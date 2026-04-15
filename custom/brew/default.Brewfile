@@ -1,4 +1,4 @@
-# Default Brewfile for bluepilot
+# Default Brewfile for bluefin-br
 # Add your favorite brew packages here
 # 
 # Examples:
@@ -20,3 +20,9 @@ brew "zoxide"     # Smarter cd command
 # Utilities
 brew "htop"       # Interactive process viewer
 brew "tmux"       # Terminal multiplexer
+
+# Epson Printer Utility (graphical nozzle check, head cleaning, ink levels)
+# Previously baked into the image; now installed at runtime via Homebrew.
+# Source: https://support.epson.net/linux/Printer/LSB_distribution_pages/en/utility.php
+tap "lbssousa/tap"
+brew "lbssousa/tap/epson-printer-utility"

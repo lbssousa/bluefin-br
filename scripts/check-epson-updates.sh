@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 ###############################################################################
-# check-epson-updates.sh — Check for Epson package updates (local + CI)
+# check-epson-updates.sh — Check for Epson ESC/P-R driver updates (local + CI)
 ###############################################################################
-# This script checks for new versions of Epson printer software packages and
-# optionally updates the build script with the new URLs.
+# This script checks for new versions of the Epson ESC/P-R driver and
+# optionally updates the build script with the new URL.
+#
+# NOTE: epson-printer-utility has been moved to Homebrew (lbssousa/homebrew-tap)
+# and is no longer tracked by this script.
 #
 # It uses two data sources:
 #   1. Epson Download Center REST API (download-center.epson.com/api/v1/modules/)
@@ -29,7 +32,7 @@ set -euo pipefail
 
 # ── Configuration ──────────────────────────────────────────────────────────
 BUILD_SCRIPT="build/20-epson-printer.sh"
-# Epson Download Center API — device_id that includes both escpr and utility
+# Epson Download Center API — device_id that includes the escpr driver
 EPSON_API_BASE="https://download-center.epson.com/api/v1/modules/"
 EPSON_DEVICE_ID="L3250 Series"
 EPSON_OS="RPM"
@@ -65,21 +68,19 @@ for arg in "$@"; do
     esac
 done
 
-# ── Parse current versions from build script ──────────────────────────────
+# ── Parse current version from build script ───────────────────────────────
 get_current_versions() {
     local script
     script="$(< "${BUILD_SCRIPT}")"
     CURRENT_ESCPR_VERSION=$(echo "${script}" | grep -oP 'ESCPR_VERSION="\K[0-9.]+')
-    CURRENT_ESCPR_URL=$(echo "${script}" | grep -oP 'ESCPR_SRPM_URL="\K[^"]+')
-    CURRENT_UTILITY_VERSION=$(echo "${script}" | grep -oP 'UTILITY_VERSION="\K[0-9.]+')
-    CURRENT_UTILITY_URL=$(echo "${script}" | grep -oP 'UTILITY_RPM_URL="\K[^"]+')
 }
 
 # ── Query Epson Download Center API ───────────────────────────────────────
 # Returns JSON array of modules for the given device + OS.
 # The API is behind Akamai; a browser User-Agent is required.
 query_epson_api() {
-    local url="${EPSON_API_BASE}?device_id=$(printf '%s' "${EPSON_DEVICE_ID}" | sed 's/ /%20/g')&os=${EPSON_OS}&region=${EPSON_REGION}&language=${EPSON_LANGUAGE}"
+    local url
+    url="${EPSON_API_BASE}?device_id=$(printf '%s' "${EPSON_DEVICE_ID}" | sed 's/ /%20/g')&os=${EPSON_OS}&region=${EPSON_REGION}&language=${EPSON_LANGUAGE}"
     local response
     response=$(curl --silent --location --max-time 30 --connect-timeout 15 \
         --user-agent "${USER_AGENT}" \
@@ -111,36 +112,11 @@ parse_escpr_from_api() {
     fi
 }
 
-# ── Parse utility info from Epson API JSON ────────────────────────────────
-parse_utility_from_api() {
-    local json="$1"
-    if command -v jq &>/dev/null; then
-        # Look for Drivers with "printer-utility" in URL (x86_64.rpm)
-        REMOTE_UTILITY_VERSION=$(echo "${json}" | jq -r '
-            .items[]
-            | select(.url != null)
-            | select(.url | test("printer-utility.*\\.x86_64\\.rpm$"))
-            | .version' 2>/dev/null | head -1)
-        REMOTE_UTILITY_URL=$(echo "${json}" | jq -r '
-            .items[]
-            | select(.url != null)
-            | select(.url | test("printer-utility.*\\.x86_64\\.rpm$"))
-            | .url' 2>/dev/null | head -1)
-    else
-        REMOTE_UTILITY_VERSION=$(echo "${json}" | grep -oP '"url":"https://[^"]*printer-utility[^"]*\.x86_64\.rpm"[^}]*"version":"[^"]*"' | grep -oP '"version":"\K[0-9.]+' | head -1) || true
-        if [[ -z "${REMOTE_UTILITY_VERSION}" ]]; then
-            # Try alternate field order
-            REMOTE_UTILITY_VERSION=$(echo "${json}" | grep -oP '"version":"[0-9.]+","publish_at"[^}]*"url":"https://[^"]*printer-utility' | grep -oP '"version":"\K[0-9.]+' | head -1) || true
-        fi
-        REMOTE_UTILITY_URL=$(echo "${json}" | grep -oP '"url":"https://[^"]*printer-utility[^"]*\.x86_64\.rpm"' | grep -oP '"url":"\K[^"]+' | head -1) || true
-    fi
-}
-
 # ── Query AUR RPC as fallback version oracle ──────────────────────────────
 query_aur_versions() {
     local response
     response=$(curl --silent --location --max-time 15 \
-        "${AUR_API}?arg[]=epson-inkjet-printer-escpr&arg[]=epson-printer-utility" 2>/dev/null) || true
+        "${AUR_API}?arg[]=epson-inkjet-printer-escpr" 2>/dev/null) || true
 
     if [[ -z "${response}" ]]; then
         echo "  ${YELLOW}⚠ AUR API unreachable${NC}" >&2
@@ -152,49 +128,33 @@ query_aur_versions() {
             .results[]
             | select(.Name == "epson-inkjet-printer-escpr")
             | .Version' 2>/dev/null | sed 's/-[0-9]*$//')
-        AUR_UTILITY_VERSION=$(echo "${response}" | jq -r '
-            .results[]
-            | select(.Name == "epson-printer-utility")
-            | .Version' 2>/dev/null | sed 's/-[0-9]*$//')
     else
         AUR_ESCPR_VERSION=$(echo "${response}" | grep -oP '"Name":"epson-inkjet-printer-escpr"[^}]*"Version":"\K[^"]+' | sed 's/-[0-9]*$//') || true
-        AUR_UTILITY_VERSION=$(echo "${response}" | grep -oP '"Name":"epson-printer-utility"[^}]*"Version":"\K[^"]+' | sed 's/-[0-9]*$//') || true
     fi
 }
 
 # ── Update the build script with new version/URL ─────────────────────────
 update_build_script() {
-    local pkg="$1" new_version="$2" new_url="$3"
-
-    case "${pkg}" in
-        escpr)
-            sed -i "s|ESCPR_VERSION=\"[0-9.]*\"|ESCPR_VERSION=\"${new_version}\"|" "${BUILD_SCRIPT}"
-            sed -i "s|ESCPR_SRPM_URL=\"[^\"]*\"|ESCPR_SRPM_URL=\"${new_url}\"|" "${BUILD_SCRIPT}"
-            ;;
-        utility)
-            sed -i "s|UTILITY_VERSION=\"[0-9.]*\"|UTILITY_VERSION=\"${new_version}\"|" "${BUILD_SCRIPT}"
-            sed -i "s|UTILITY_RPM_URL=\"[^\"]*\"|UTILITY_RPM_URL=\"${new_url}\"|" "${BUILD_SCRIPT}"
-            ;;
-    esac
+    local new_version="$1" new_url="$2"
+    sed -i "s|ESCPR_VERSION=\"[0-9.]*\"|ESCPR_VERSION=\"${new_version}\"|" "${BUILD_SCRIPT}"
+    sed -i "s|ESCPR_SRPM_URL=\"[^\"]*\"|ESCPR_SRPM_URL=\"${new_url}\"|" "${BUILD_SCRIPT}"
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────
 
 # Initialize result variables
 REMOTE_ESCPR_VERSION="" ; REMOTE_ESCPR_URL=""
-REMOTE_UTILITY_VERSION="" ; REMOTE_UTILITY_URL=""
-AUR_ESCPR_VERSION="" ; AUR_UTILITY_VERSION=""
-ESCPR_CHANGED=false ; UTILITY_CHANGED=false
+AUR_ESCPR_VERSION=""
+ESCPR_CHANGED=false
 EPSON_API_OK=false
 
-# Read current versions
+# Read current version
 get_current_versions
 
 if [[ "${MODE}" != "json" ]]; then
-    echo -e "${BOLD}Epson Package Update Checker${NC}"
-    echo -e "Current versions:"
+    echo -e "${BOLD}Epson ESC/P-R Driver Update Checker${NC}"
+    echo -e "Current version:"
     echo -e "  escpr:   ${CURRENT_ESCPR_VERSION}"
-    echo -e "  utility: ${CURRENT_UTILITY_VERSION}"
     echo ""
 fi
 
@@ -208,12 +168,10 @@ API_JSON=$(query_epson_api)
 if [[ -n "${API_JSON}" ]] && echo "${API_JSON}" | grep -q '"items"'; then
     EPSON_API_OK=true
     parse_escpr_from_api "${API_JSON}"
-    parse_utility_from_api "${API_JSON}"
 
     if [[ "${MODE}" != "json" ]]; then
         echo -e "  ${GREEN}✓ API accessible${NC}"
         [[ -n "${REMOTE_ESCPR_VERSION}" ]] && echo -e "  escpr:   ${REMOTE_ESCPR_VERSION} → ${REMOTE_ESCPR_URL}"
-        [[ -n "${REMOTE_UTILITY_VERSION}" ]] && echo -e "  utility: ${REMOTE_UTILITY_VERSION} → ${REMOTE_UTILITY_URL}"
     fi
 else
     if [[ "${MODE}" != "json" ]]; then
@@ -231,12 +189,10 @@ if query_aur_versions; then
     if [[ "${MODE}" != "json" ]]; then
         echo -e "  ${GREEN}✓ AUR API accessible${NC}"
         [[ -n "${AUR_ESCPR_VERSION}" ]] && echo -e "  escpr:   ${AUR_ESCPR_VERSION} (AUR)"
-        [[ -n "${AUR_UTILITY_VERSION}" ]] && echo -e "  utility: ${AUR_UTILITY_VERSION} (AUR)"
     fi
 
-    # Use AUR versions if Epson API didn't return them
+    # Use AUR version if Epson API didn't return it
     [[ -z "${REMOTE_ESCPR_VERSION}" ]] && REMOTE_ESCPR_VERSION="${AUR_ESCPR_VERSION}"
-    [[ -z "${REMOTE_UTILITY_VERSION}" ]] && REMOTE_UTILITY_VERSION="${AUR_UTILITY_VERSION}"
 fi
 
 # ── Step 3: Compare and report ────────────────────────────────────────────
@@ -244,9 +200,6 @@ echo ""
 
 if [[ -n "${REMOTE_ESCPR_VERSION}" && "${REMOTE_ESCPR_VERSION}" != "${CURRENT_ESCPR_VERSION}" ]]; then
     ESCPR_CHANGED=true
-fi
-if [[ -n "${REMOTE_UTILITY_VERSION}" && "${REMOTE_UTILITY_VERSION}" != "${CURRENT_UTILITY_VERSION}" ]]; then
-    UTILITY_CHANGED=true
 fi
 
 # ── JSON output mode (for CI) ────────────────────────────────────────────
@@ -261,13 +214,6 @@ if [[ "${MODE}" == "json" ]]; then
     "changed": ${ESCPR_CHANGED},
     "url_available": $([ -n "${REMOTE_ESCPR_URL}" ] && echo true || echo false)
   },
-  "utility": {
-    "current_version": "${CURRENT_UTILITY_VERSION}",
-    "remote_version": "${REMOTE_UTILITY_VERSION}",
-    "remote_url": "${REMOTE_UTILITY_URL}",
-    "changed": ${UTILITY_CHANGED},
-    "url_available": $([ -n "${REMOTE_UTILITY_URL}" ] && echo true || echo false)
-  },
   "epson_api_ok": ${EPSON_API_OK}
 }
 EOF
@@ -275,58 +221,34 @@ EOF
 fi
 
 # ── Display mode ──────────────────────────────────────────────────────────
-if [[ "${ESCPR_CHANGED}" == "true" || "${UTILITY_CHANGED}" == "true" ]]; then
-    echo -e "${BOLD}${YELLOW}Updates available:${NC}"
+if [[ "${ESCPR_CHANGED}" == "true" ]]; then
+    echo -e "${BOLD}${YELLOW}Update available:${NC}"
     echo ""
 
-    if [[ "${ESCPR_CHANGED}" == "true" ]]; then
-        echo -e "  ${BOLD}epson-inkjet-printer-escpr${NC}"
-        echo -e "    Current: ${RED}${CURRENT_ESCPR_VERSION}${NC}"
-        echo -e "    Latest:  ${GREEN}${REMOTE_ESCPR_VERSION}${NC}"
-        if [[ -n "${REMOTE_ESCPR_URL}" ]]; then
-            echo -e "    URL:     ${REMOTE_ESCPR_URL}"
-        else
-            echo -e "    URL:     ${YELLOW}Not available (Epson API blocked)${NC}"
-            echo -e "             Open the download page in a browser to get the URL:"
-            echo -e "             https://support.epson.net/linux/Printer/LSB_distribution_pages/en/escpr.php"
-        fi
-        echo ""
+    echo -e "  ${BOLD}epson-inkjet-printer-escpr${NC}"
+    echo -e "    Current: ${RED}${CURRENT_ESCPR_VERSION}${NC}"
+    echo -e "    Latest:  ${GREEN}${REMOTE_ESCPR_VERSION}${NC}"
+    if [[ -n "${REMOTE_ESCPR_URL}" ]]; then
+        echo -e "    URL:     ${REMOTE_ESCPR_URL}"
+    else
+        echo -e "    URL:     ${YELLOW}Not available (Epson API blocked)${NC}"
+        echo -e "             Open the download page in a browser to get the URL:"
+        echo -e "             https://support.epson.net/linux/Printer/LSB_distribution_pages/en/escpr.php"
     fi
-
-    if [[ "${UTILITY_CHANGED}" == "true" ]]; then
-        echo -e "  ${BOLD}epson-printer-utility${NC}"
-        echo -e "    Current: ${RED}${CURRENT_UTILITY_VERSION}${NC}"
-        echo -e "    Latest:  ${GREEN}${REMOTE_UTILITY_VERSION}${NC}"
-        if [[ -n "${REMOTE_UTILITY_URL}" ]]; then
-            echo -e "    URL:     ${REMOTE_UTILITY_URL}"
-        else
-            echo -e "    URL:     ${YELLOW}Not available (Epson API blocked)${NC}"
-            echo -e "             Open the download page in a browser to get the URL:"
-            echo -e "             https://support.epson.net/linux/Printer/LSB_distribution_pages/en/utility.php"
-        fi
-        echo ""
-    fi
+    echo ""
 
     # ── Update mode ──────────────────────────────────────────────────
     if [[ "${MODE}" == "update" ]]; then
-        if [[ "${ESCPR_CHANGED}" == "true" && -n "${REMOTE_ESCPR_URL}" ]]; then
-            update_build_script escpr "${REMOTE_ESCPR_VERSION}" "${REMOTE_ESCPR_URL}"
+        if [[ -n "${REMOTE_ESCPR_URL}" ]]; then
+            update_build_script "${REMOTE_ESCPR_VERSION}" "${REMOTE_ESCPR_URL}"
             echo -e "${GREEN}✓ Updated escpr to ${REMOTE_ESCPR_VERSION} in ${BUILD_SCRIPT}${NC}"
-        elif [[ "${ESCPR_CHANGED}" == "true" ]]; then
+        else
             echo -e "${YELLOW}⚠ Cannot update escpr: download URL not available.${NC}"
-            echo -e "  Run this script locally or find the URL manually."
-        fi
-
-        if [[ "${UTILITY_CHANGED}" == "true" && -n "${REMOTE_UTILITY_URL}" ]]; then
-            update_build_script utility "${REMOTE_UTILITY_VERSION}" "${REMOTE_UTILITY_URL}"
-            echo -e "${GREEN}✓ Updated utility to ${REMOTE_UTILITY_VERSION} in ${BUILD_SCRIPT}${NC}"
-        elif [[ "${UTILITY_CHANGED}" == "true" ]]; then
-            echo -e "${YELLOW}⚠ Cannot update utility: download URL not available.${NC}"
             echo -e "  Run this script locally or find the URL manually."
         fi
     else
         echo -e "Run with ${BOLD}--update${NC} to apply changes to ${BUILD_SCRIPT}"
     fi
 else
-    echo -e "${GREEN}All Epson packages are up to date.${NC}"
+    echo -e "${GREEN}Epson ESC/P-R driver is up to date.${NC}"
 fi

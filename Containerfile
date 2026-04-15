@@ -30,8 +30,8 @@
 #    - Fedora version and digest are controlled by FEDORA_MAJOR_VERSION and
 #      BASE_IMAGE_DIGEST build args. These are set per stream:
 #    - stable / stable-daily: pinned to silverblue-main:44 (see image-versions.yml)
-#        - testing: same base, built more frequently
-#        - next:    silverblue-main:44 (see image-versions.yml)
+#        - latest: same base, built more frequently
+#        - beta:   silverblue-main:44 (see image-versions.yml)
 #
 # Image digests in image-versions.yml are automatically updated by Renovate.
 # Stream definitions: https://docs.projectbluefin.io/blog/unifying-bluefin/
@@ -81,11 +81,10 @@ ENV IMAGE_FLAVOR=${IMAGE_FLAVOR}
 ## Some bootable images, like Fedora, have /opt symlinked to /var/opt, in order to
 ## make it mutable/writable for users. However, some packages write files to this directory,
 ## thus its contents might be wiped out when bootc deploys an image, making it troublesome for
-## some packages. Eg, google-chrome, docker-desktop, epson-printer-utility.
+## some packages. Eg, google-chrome, docker-desktop.
 ##
 ## The following line makes /opt an immutable real directory so that packages
-## installed there (such as epson-printer-utility) are included in the image layers
-## and correctly deployed by bootc.
+## installed there are included in the image layers and correctly deployed by bootc.
 
 RUN rm /opt && mkdir /opt
 

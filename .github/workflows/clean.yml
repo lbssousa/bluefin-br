@@ -27,6 +27,6 @@ jobs:
           older-than: 90 days
           delete-orphaned-images: true
           # Keep the last 7 tagged images per stream:
-          #   stable, stable-daily, testing, next  (+ datestamped variants)
-          keep-n-tagged: 28
+          #   stable, stable-daily, gts, latest, beta  (+ datestamped variants)
+          keep-n-tagged: 35
           keep-n-untagged: 7

@@ -1,11 +1,13 @@
 ---
-# Builds the "testing" image stream (previously known as "latest").
+# Builds the "beta" image stream.
 #
 # Tag scheme (mirrors Bluefin, see https://docs.projectbluefin.io/blog/unifying-bluefin/):
-#   testing             - every build from the current Fedora release
-#   NN.YYYYMMDD[.B]     - timestamp tag (NN = Fedora version, B = build number for same-day rebuilds)
+#   beta                   - weekly build from the next Fedora release (pre-release / rawhide)
+#   beta-NN.YYYYMMDD       - prefixed timestamp for beta
+#   beta-YYYYMMDD          - short prefixed timestamp for beta
+#   NN.YYYYMMDD[.B]        - timestamp tag (NN = Fedora version, B = build number for same-day rebuilds)
 #
-# Triggers on every push to main so users always have an up-to-date testing image.
+# Requires "silverblue-main-beta" in image-versions.yml pointing to the next Fedora base image.
 #
 # Image variants built per stream:
 #   bluefin-br              - base image (Silverblue + BR customisations)
@@ -15,29 +17,18 @@
 #   bluefin-br-nvidia-open  - NVIDIA open drivers variant
 #   bluefin-br-dx-nvidia-open - DX + NVIDIA open drivers variant
 #
-name: Build testing image
+name: Build beta image
 on:
-  pull_request:
-    branches:
-      - main
-    paths-ignore:
-      - "**/README.md"
-      - ".github/workflows/*validate*.yml"
   schedule:
-    - cron: '0 3 * * *'    # 03:00 UTC daily
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - "**/README.md"
+    - cron: '50 5 * * SUN'   # 05:50 UTC every Sunday (same cadence as Bluefin beta)
   workflow_dispatch:
 
 env:
-  IMAGE_KEYWORDS: "bootc,ublue,universal-blue,bluefin,brasil,pt-br,testing"
+  IMAGE_KEYWORDS: "bootc,ublue,universal-blue,bluefin,brasil,pt-br,beta"
   IMAGE_LOGO_URL: "https://avatars.githubusercontent.com/u/120078124?s=200&v=4"
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
   BASE_IMAGE_NAME_ROOT: "${{ github.event.repository.name }}"
-  DEFAULT_TAG: "testing"
+  DEFAULT_TAG: "beta"
 
 jobs:
   build_push:
@@ -58,50 +49,50 @@ jobs:
         include:
           - image_flavor: main
             base_image_name: silverblue
-            image_versions_key: silverblue-main
+            image_versions_key: silverblue-main-beta
             akmods_versions_key: ""
             containerfile: "Containerfile"
             image_name_suffix: ""
-            image_desc: "Bluefin para o Brasil (testing)"
+            image_desc: "Bluefin para o Brasil (beta)"
           - image_flavor: dx
             base_image_name: silverblue
-            image_versions_key: silverblue-main
+            image_versions_key: silverblue-main-beta
             akmods_versions_key: ""
             containerfile: "Containerfile"
             image_name_suffix: "-dx"
-            image_desc: "Bluefin para o Brasil (developer experience, testing)"
+            image_desc: "Bluefin para o Brasil (developer experience, beta)"
           - image_flavor: main
             base_image_name: silverblue
-            image_versions_key: silverblue-main
-            akmods_versions_key: "akmods-nvidia-lts-main"
-            akmods_addons_versions_key: "akmods-main"
+            image_versions_key: silverblue-main-beta
+            akmods_versions_key: "akmods-nvidia-lts-main-beta"
+            akmods_addons_versions_key: "akmods-main-beta"
             containerfile: "Containerfile.nvidia"
             image_name_suffix: "-nvidia"
-            image_desc: "Bluefin para o Brasil (NVIDIA proprietário, testing)"
+            image_desc: "Bluefin para o Brasil (NVIDIA proprietário, beta)"
           - image_flavor: dx
             base_image_name: silverblue
-            image_versions_key: silverblue-main
-            akmods_versions_key: "akmods-nvidia-lts-main"
-            akmods_addons_versions_key: "akmods-main"
+            image_versions_key: silverblue-main-beta
+            akmods_versions_key: "akmods-nvidia-lts-main-beta"
+            akmods_addons_versions_key: "akmods-main-beta"
             containerfile: "Containerfile.nvidia"
             image_name_suffix: "-dx-nvidia"
-            image_desc: "Bluefin para o Brasil (developer experience + NVIDIA proprietário, testing)"
+            image_desc: "Bluefin para o Brasil (developer experience + NVIDIA proprietário, beta)"
           - image_flavor: main
             base_image_name: silverblue
-            image_versions_key: silverblue-main
-            akmods_versions_key: "akmods-nvidia-open-main"
-            akmods_addons_versions_key: "akmods-main"
+            image_versions_key: silverblue-main-beta
+            akmods_versions_key: "akmods-nvidia-open-main-beta"
+            akmods_addons_versions_key: "akmods-main-beta"
             containerfile: "Containerfile.nvidia-open"
             image_name_suffix: "-nvidia-open"
-            image_desc: "Bluefin para o Brasil (NVIDIA open, testing)"
+            image_desc: "Bluefin para o Brasil (NVIDIA open, beta)"
           - image_flavor: dx
             base_image_name: silverblue
-            image_versions_key: silverblue-main
-            akmods_versions_key: "akmods-nvidia-open-main"
-            akmods_addons_versions_key: "akmods-main"
+            image_versions_key: silverblue-main-beta
+            akmods_versions_key: "akmods-nvidia-open-main-beta"
+            akmods_addons_versions_key: "akmods-main-beta"
             containerfile: "Containerfile.nvidia-open"
             image_name_suffix: "-dx-nvidia-open"
-            image_desc: "Bluefin para o Brasil (developer experience + NVIDIA open, testing)"
+            image_desc: "Bluefin para o Brasil (developer experience + NVIDIA open, beta)"
 
     steps:
       - name: Prepare environment
@@ -135,7 +126,7 @@ jobs:
 
           # Resolve the real Fedora major version from the base image OCI labels,
           # following the same pattern as upstream Bluefin (skopeo inspect + jq).
-          # The tag in image-versions.yml may be "latest" or "next" (a stream name),
+          # The tag in image-versions.yml may be "latest" or "beta" (a stream name),
           # not the numeric Fedora version needed for timestamp tags.
           IMAGE_TAG=$(yq -r '.images[] | select(.name == "${{ matrix.image_versions_key }}") | .tag' image-versions.yml)
           if [[ "${IMAGE_TAG}" =~ ^[0-9]+$ ]]; then
@@ -195,6 +186,15 @@ jobs:
 
           echo "TIMESTAMP_TAG=${TIMESTAMP_TAG}" >> $GITHUB_ENV
 
+      - name: Determine tags
+        id: tags
+        run: |
+          VERSION="${TIMESTAMP_TAG}"
+          VERSION_SHORT="${VERSION#*.}"
+          TAGS="beta beta-${TIMESTAMP_TAG} beta-${VERSION_SHORT} ${TIMESTAMP_TAG}"
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "DEFAULT_TAG=beta" >> $GITHUB_ENV
+
       - name: Get current date
         id: date
         run: echo "date=$(date -u +%Y\-%m\-%d\T%H\:%M\:%S\Z)" >> $GITHUB_OUTPUT
@@ -204,10 +204,8 @@ jobs:
         id: metadata
         with:
           tags: |
-            type=raw,value=testing
+            type=raw,value=beta
             type=raw,value=${{ env.TIMESTAMP_TAG }}
-            type=sha,enable=${{ github.event_name == 'pull_request' }}
-            type=ref,event=pr
           labels: |
             io.artifacthub.package.readme-url=https://raw.githubusercontent.com/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}/${{ github.sha }}/README.md
             org.opencontainers.image.created=${{ steps.date.outputs.date }}
@@ -290,13 +288,12 @@ jobs:
 
       - name: Tag for registry
         run: |
-          for tag in ${{ steps.metadata.outputs.tags }}; do
+          for tag in ${{ steps.tags.outputs.tags }}; do
             podman tag ${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }} ${{ env.IMAGE_NAME }}:${tag}
           done
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
-        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -304,7 +301,6 @@ jobs:
 
       - name: Push To GHCR
         uses: redhat-actions/push-to-registry@5ed88d269cf581ea9ef6dd6806d01562096bee9c # v2
-        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         id: push
         env:
           REGISTRY_USER: ${{ github.actor }}
@@ -312,28 +308,23 @@ jobs:
         with:
           registry: ${{ env.IMAGE_REGISTRY }}
           image: ${{ env.IMAGE_NAME }}
-          tags: ${{ steps.metadata.outputs.tags }}
+          tags: ${{ steps.tags.outputs.tags }}
           username: ${{ env.REGISTRY_USER }}
           password: ${{ env.REGISTRY_PASSWORD }}
 
-      # Image Signing with Cosign
-      # Required: all images at ghcr.io/lbssousa must be signed because the image
-      # configures /etc/containers/policy.json to require sigstoreSigned verification
-      # for that registry namespace.
+      # OPTIONAL: Image Signing with Cosign
+      # Signing is disabled by default. To enable, see README.md "Optional: Enable Image Signing" section.
 
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
-        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
-
-      - name: Sign container image
-        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
-        run: |
-          IMAGE_FULL="${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}"
-          for tag in ${{ steps.metadata.outputs.tags }}; do
-            cosign sign -y --key env://COSIGN_PRIVATE_KEY --tlog-upload=false $IMAGE_FULL:${tag}
-          done
-        env:
-          TAGS: ${{ steps.push.outputs.digest }}
-          COSIGN_EXPERIMENTAL: false
-          COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
-          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+      # - name: Install Cosign
+      #   uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
+      #
+      # - name: Sign container image
+      #   run: |
+      #     IMAGE_FULL="${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}"
+      #     for tag in ${{ steps.tags.outputs.tags }}; do
+      #       cosign sign -y --key env://COSIGN_PRIVATE_KEY --tlog-upload=false $IMAGE_FULL:${tag}
+      #     done
+      #   env:
+      #     TAGS: ${{ steps.push.outputs.digest }}
+      #     COSIGN_EXPERIMENTAL: false
+      #     COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
