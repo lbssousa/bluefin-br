@@ -1,11 +1,13 @@
 ---
-# Builds the "next" image stream (previously known as "beta").
+# Builds the "beta" image stream.
 #
 # Tag scheme (mirrors Bluefin, see https://docs.projectbluefin.io/blog/unifying-bluefin/):
-#   next                - weekly build from the next Fedora release (pre-release / rawhide)
-#   NN.YYYYMMDD[.B]     - timestamp tag (NN = Fedora version, B = build number for same-day rebuilds)
+#   beta                   - weekly build from the next Fedora release (pre-release / rawhide)
+#   beta-NN.YYYYMMDD       - prefixed timestamp for beta
+#   beta-YYYYMMDD          - short prefixed timestamp for beta
+#   NN.YYYYMMDD[.B]        - timestamp tag (NN = Fedora version, B = build number for same-day rebuilds)
 #
-# Requires "silverblue-main-next" in image-versions.yml pointing to the next Fedora base image.
+# Requires "silverblue-main-beta" in image-versions.yml pointing to the next Fedora base image.
 #
 # Image variants built per stream:
 #   bluefin-br              - base image (Silverblue + BR customisations)
@@ -15,18 +17,18 @@
 #   bluefin-br-nvidia-open  - NVIDIA open drivers variant
 #   bluefin-br-dx-nvidia-open - DX + NVIDIA open drivers variant
 #
-name: Build next image
+name: Build beta image
 on:
   schedule:
     - cron: '50 5 * * SUN'   # 05:50 UTC every Sunday (same cadence as Bluefin beta)
   workflow_dispatch:
 
 env:
-  IMAGE_KEYWORDS: "bootc,ublue,universal-blue,bluefin,brasil,pt-br,next"
+  IMAGE_KEYWORDS: "bootc,ublue,universal-blue,bluefin,brasil,pt-br,beta"
   IMAGE_LOGO_URL: "https://avatars.githubusercontent.com/u/120078124?s=200&v=4"
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
   BASE_IMAGE_NAME_ROOT: "${{ github.event.repository.name }}"
-  DEFAULT_TAG: "next"
+  DEFAULT_TAG: "beta"
 
 jobs:
   build_push:
@@ -47,50 +49,50 @@ jobs:
         include:
           - image_flavor: main
             base_image_name: silverblue
-            image_versions_key: silverblue-main-next
+            image_versions_key: silverblue-main-beta
             akmods_versions_key: ""
             containerfile: "Containerfile"
             image_name_suffix: ""
-            image_desc: "Bluefin para o Brasil (next)"
+            image_desc: "Bluefin para o Brasil (beta)"
           - image_flavor: dx
             base_image_name: silverblue
-            image_versions_key: silverblue-main-next
+            image_versions_key: silverblue-main-beta
             akmods_versions_key: ""
             containerfile: "Containerfile"
             image_name_suffix: "-dx"
-            image_desc: "Bluefin para o Brasil (developer experience, next)"
+            image_desc: "Bluefin para o Brasil (developer experience, beta)"
           - image_flavor: main
             base_image_name: silverblue
-            image_versions_key: silverblue-main-next
-            akmods_versions_key: "akmods-nvidia-lts-main-next"
-            akmods_addons_versions_key: "akmods-main-next"
+            image_versions_key: silverblue-main-beta
+            akmods_versions_key: "akmods-nvidia-lts-main-beta"
+            akmods_addons_versions_key: "akmods-main-beta"
             containerfile: "Containerfile.nvidia"
             image_name_suffix: "-nvidia"
-            image_desc: "Bluefin para o Brasil (NVIDIA proprietário, next)"
+            image_desc: "Bluefin para o Brasil (NVIDIA proprietário, beta)"
           - image_flavor: dx
             base_image_name: silverblue
-            image_versions_key: silverblue-main-next
-            akmods_versions_key: "akmods-nvidia-lts-main-next"
-            akmods_addons_versions_key: "akmods-main-next"
+            image_versions_key: silverblue-main-beta
+            akmods_versions_key: "akmods-nvidia-lts-main-beta"
+            akmods_addons_versions_key: "akmods-main-beta"
             containerfile: "Containerfile.nvidia"
             image_name_suffix: "-dx-nvidia"
-            image_desc: "Bluefin para o Brasil (developer experience + NVIDIA proprietário, next)"
+            image_desc: "Bluefin para o Brasil (developer experience + NVIDIA proprietário, beta)"
           - image_flavor: main
             base_image_name: silverblue
-            image_versions_key: silverblue-main-next
-            akmods_versions_key: "akmods-nvidia-open-main-next"
-            akmods_addons_versions_key: "akmods-main-next"
+            image_versions_key: silverblue-main-beta
+            akmods_versions_key: "akmods-nvidia-open-main-beta"
+            akmods_addons_versions_key: "akmods-main-beta"
             containerfile: "Containerfile.nvidia-open"
             image_name_suffix: "-nvidia-open"
-            image_desc: "Bluefin para o Brasil (NVIDIA open, next)"
+            image_desc: "Bluefin para o Brasil (NVIDIA open, beta)"
           - image_flavor: dx
             base_image_name: silverblue
-            image_versions_key: silverblue-main-next
-            akmods_versions_key: "akmods-nvidia-open-main-next"
-            akmods_addons_versions_key: "akmods-main-next"
+            image_versions_key: silverblue-main-beta
+            akmods_versions_key: "akmods-nvidia-open-main-beta"
+            akmods_addons_versions_key: "akmods-main-beta"
             containerfile: "Containerfile.nvidia-open"
             image_name_suffix: "-dx-nvidia-open"
-            image_desc: "Bluefin para o Brasil (developer experience + NVIDIA open, next)"
+            image_desc: "Bluefin para o Brasil (developer experience + NVIDIA open, beta)"
 
     steps:
       - name: Prepare environment
@@ -184,6 +186,15 @@ jobs:
 
           echo "TIMESTAMP_TAG=${TIMESTAMP_TAG}" >> $GITHUB_ENV
 
+      - name: Determine tags
+        id: tags
+        run: |
+          VERSION="${TIMESTAMP_TAG}"
+          VERSION_SHORT="${VERSION:3}"
+          TAGS="beta beta-${TIMESTAMP_TAG} beta-${VERSION_SHORT} ${TIMESTAMP_TAG}"
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "DEFAULT_TAG=beta" >> $GITHUB_ENV
+
       - name: Get current date
         id: date
         run: echo "date=$(date -u +%Y\-%m\-%d\T%H\:%M\:%S\Z)" >> $GITHUB_OUTPUT
@@ -193,7 +204,7 @@ jobs:
         id: metadata
         with:
           tags: |
-            type=raw,value=next
+            type=raw,value=beta
             type=raw,value=${{ env.TIMESTAMP_TAG }}
           labels: |
             io.artifacthub.package.readme-url=https://raw.githubusercontent.com/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}/${{ github.sha }}/README.md
@@ -277,7 +288,7 @@ jobs:
 
       - name: Tag for registry
         run: |
-          for tag in ${{ steps.metadata.outputs.tags }}; do
+          for tag in ${{ steps.tags.outputs.tags }}; do
             podman tag ${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }} ${{ env.IMAGE_NAME }}:${tag}
           done
 
@@ -297,7 +308,7 @@ jobs:
         with:
           registry: ${{ env.IMAGE_REGISTRY }}
           image: ${{ env.IMAGE_NAME }}
-          tags: ${{ steps.metadata.outputs.tags }}
+          tags: ${{ steps.tags.outputs.tags }}
           username: ${{ env.REGISTRY_USER }}
           password: ${{ env.REGISTRY_PASSWORD }}
 
@@ -310,7 +321,7 @@ jobs:
       # - name: Sign container image
       #   run: |
       #     IMAGE_FULL="${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}"
-      #     for tag in ${{ steps.metadata.outputs.tags }}; do
+      #     for tag in ${{ steps.tags.outputs.tags }}; do
       #       cosign sign -y --key env://COSIGN_PRIVATE_KEY --tlog-upload=false $IMAGE_FULL:${tag}
       #     done
       #   env:

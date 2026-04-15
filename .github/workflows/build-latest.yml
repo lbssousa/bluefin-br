@@ -1,11 +1,14 @@
 ---
-# Builds the "testing" image stream (previously known as "latest").
+# Builds the "latest" image stream.
 #
 # Tag scheme (mirrors Bluefin, see https://docs.projectbluefin.io/blog/unifying-bluefin/):
-#   testing             - every build from the current Fedora release
-#   NN.YYYYMMDD[.B]     - timestamp tag (NN = Fedora version, B = build number for same-day rebuilds)
+#   latest                 - every build from the current Fedora release
+#   latest-NN.YYYYMMDD     - prefixed timestamp for latest
+#   latest-YYYYMMDD        - short prefixed timestamp for latest
+#   NN.YYYYMMDD[.B]        - timestamp tag (NN = Fedora version, B = build number for same-day rebuilds)
+#   NN                     - Fedora version shorthand
 #
-# Triggers on every push to main so users always have an up-to-date testing image.
+# Triggers on every push to main so users always have an up-to-date latest image.
 #
 # Image variants built per stream:
 #   bluefin-br              - base image (Silverblue + BR customisations)
@@ -15,7 +18,7 @@
 #   bluefin-br-nvidia-open  - NVIDIA open drivers variant
 #   bluefin-br-dx-nvidia-open - DX + NVIDIA open drivers variant
 #
-name: Build testing image
+name: Build latest image
 on:
   pull_request:
     branches:
@@ -23,8 +26,6 @@ on:
     paths-ignore:
       - "**/README.md"
       - ".github/workflows/*validate*.yml"
-  schedule:
-    - cron: '0 3 * * *'    # 03:00 UTC daily
   push:
     branches:
       - main
@@ -33,11 +34,11 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_KEYWORDS: "bootc,ublue,universal-blue,bluefin,brasil,pt-br,testing"
+  IMAGE_KEYWORDS: "bootc,ublue,universal-blue,bluefin,brasil,pt-br,latest"
   IMAGE_LOGO_URL: "https://avatars.githubusercontent.com/u/120078124?s=200&v=4"
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
   BASE_IMAGE_NAME_ROOT: "${{ github.event.repository.name }}"
-  DEFAULT_TAG: "testing"
+  DEFAULT_TAG: "latest"
 
 jobs:
   build_push:
@@ -62,14 +63,14 @@ jobs:
             akmods_versions_key: ""
             containerfile: "Containerfile"
             image_name_suffix: ""
-            image_desc: "Bluefin para o Brasil (testing)"
+            image_desc: "Bluefin para o Brasil (latest)"
           - image_flavor: dx
             base_image_name: silverblue
             image_versions_key: silverblue-main
             akmods_versions_key: ""
             containerfile: "Containerfile"
             image_name_suffix: "-dx"
-            image_desc: "Bluefin para o Brasil (developer experience, testing)"
+            image_desc: "Bluefin para o Brasil (developer experience, latest)"
           - image_flavor: main
             base_image_name: silverblue
             image_versions_key: silverblue-main
@@ -77,7 +78,7 @@ jobs:
             akmods_addons_versions_key: "akmods-main"
             containerfile: "Containerfile.nvidia"
             image_name_suffix: "-nvidia"
-            image_desc: "Bluefin para o Brasil (NVIDIA proprietário, testing)"
+            image_desc: "Bluefin para o Brasil (NVIDIA proprietário, latest)"
           - image_flavor: dx
             base_image_name: silverblue
             image_versions_key: silverblue-main
@@ -85,7 +86,7 @@ jobs:
             akmods_addons_versions_key: "akmods-main"
             containerfile: "Containerfile.nvidia"
             image_name_suffix: "-dx-nvidia"
-            image_desc: "Bluefin para o Brasil (developer experience + NVIDIA proprietário, testing)"
+            image_desc: "Bluefin para o Brasil (developer experience + NVIDIA proprietário, latest)"
           - image_flavor: main
             base_image_name: silverblue
             image_versions_key: silverblue-main
@@ -93,7 +94,7 @@ jobs:
             akmods_addons_versions_key: "akmods-main"
             containerfile: "Containerfile.nvidia-open"
             image_name_suffix: "-nvidia-open"
-            image_desc: "Bluefin para o Brasil (NVIDIA open, testing)"
+            image_desc: "Bluefin para o Brasil (NVIDIA open, latest)"
           - image_flavor: dx
             base_image_name: silverblue
             image_versions_key: silverblue-main
@@ -101,7 +102,7 @@ jobs:
             akmods_addons_versions_key: "akmods-main"
             containerfile: "Containerfile.nvidia-open"
             image_name_suffix: "-dx-nvidia-open"
-            image_desc: "Bluefin para o Brasil (developer experience + NVIDIA open, testing)"
+            image_desc: "Bluefin para o Brasil (developer experience + NVIDIA open, latest)"
 
     steps:
       - name: Prepare environment
@@ -195,6 +196,15 @@ jobs:
 
           echo "TIMESTAMP_TAG=${TIMESTAMP_TAG}" >> $GITHUB_ENV
 
+      - name: Determine tags
+        id: tags
+        run: |
+          VERSION="${TIMESTAMP_TAG}"
+          VERSION_SHORT="${VERSION:3}"
+          TAGS="latest latest-${TIMESTAMP_TAG} latest-${VERSION_SHORT} ${TIMESTAMP_TAG} ${FEDORA_MAJOR_VERSION}"
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "DEFAULT_TAG=latest" >> $GITHUB_ENV
+
       - name: Get current date
         id: date
         run: echo "date=$(date -u +%Y\-%m\-%d\T%H\:%M\:%S\Z)" >> $GITHUB_OUTPUT
@@ -204,7 +214,7 @@ jobs:
         id: metadata
         with:
           tags: |
-            type=raw,value=testing
+            type=raw,value=latest
             type=raw,value=${{ env.TIMESTAMP_TAG }}
             type=sha,enable=${{ github.event_name == 'pull_request' }}
             type=ref,event=pr
@@ -290,7 +300,7 @@ jobs:
 
       - name: Tag for registry
         run: |
-          for tag in ${{ steps.metadata.outputs.tags }}; do
+          for tag in ${{ steps.tags.outputs.tags }}; do
             podman tag ${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }} ${{ env.IMAGE_NAME }}:${tag}
           done
 
@@ -312,7 +322,7 @@ jobs:
         with:
           registry: ${{ env.IMAGE_REGISTRY }}
           image: ${{ env.IMAGE_NAME }}
-          tags: ${{ steps.metadata.outputs.tags }}
+          tags: ${{ steps.tags.outputs.tags }}
           username: ${{ env.REGISTRY_USER }}
           password: ${{ env.REGISTRY_PASSWORD }}
 
@@ -329,7 +339,7 @@ jobs:
         if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         run: |
           IMAGE_FULL="${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}"
-          for tag in ${{ steps.metadata.outputs.tags }}; do
+          for tag in ${{ steps.tags.outputs.tags }}; do
             cosign sign -y --key env://COSIGN_PRIVATE_KEY --tlog-upload=false $IMAGE_FULL:${tag}
           done
         env:

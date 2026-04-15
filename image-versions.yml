@@ -3,10 +3,10 @@ images:
     image: ghcr.io/ublue-os/silverblue-main
     tag: "44"
     digest: sha256:4c556548c3c8f59a059e923d2e61d633bc4e3318e8a5fabe18ead6ebbfe45c25
-  - name: silverblue-main-next
+  - name: silverblue-main-beta
     image: ghcr.io/ublue-os/silverblue-main
     tag: "44"
-    # The :44 tag tracks Fedora 44 (current pre-release / next stream).
+    # The :44 tag tracks Fedora 44 (current pre-release / beta stream).
     digest: sha256:4c556548c3c8f59a059e923d2e61d633bc4e3318e8a5fabe18ead6ebbfe45c25
   - name: akmods-main
     image: ghcr.io/ublue-os/akmods
@@ -25,17 +25,17 @@ images:
     # Renovate will update this digest automatically.
     # Must match the same Fedora version as silverblue-main and akmods-main.
     digest: sha256:e1b025409407aec2b7f94fe166a06635e3a4d958d96d02061d9ca292e37ca7f9
-  - name: akmods-main-next
+  - name: akmods-main-beta
     image: ghcr.io/ublue-os/akmods
     tag: main-44
     # Renovate will update this digest automatically.
     digest: sha256:ac1ebda3be0b52a66c84aca7ecf1c02da6bb009ccb6d6942c7c74b1582f5d39c
-  - name: akmods-nvidia-lts-main-next
+  - name: akmods-nvidia-lts-main-beta
     image: ghcr.io/ublue-os/akmods-nvidia-lts
     tag: main-44
     # Renovate will update this digest automatically.
     digest: sha256:74253c61ba1b8f4d22d24dc849a68e3f55b0c4289d80cab885c58fecc1424ea2
-  - name: akmods-nvidia-open-main-next
+  - name: akmods-nvidia-open-main-beta
     image: ghcr.io/ublue-os/akmods-nvidia-open
     tag: main-44
     # Renovate will update this digest automatically.
