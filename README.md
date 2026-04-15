@@ -34,7 +34,6 @@ Here are the changes from Bluefin. This image is based on [Bluefin](https://proj
 
 ### Configuration Changes
 - Based on `ghcr.io/ublue-os/silverblue-main:latest` — identical to Bluefin's base
-- `/opt` is an immutable real directory (not a symlink to `/var/opt`) so that packages installed there are correctly included in the image layers and deployed by bootc.
 
 *Last updated: 2026-04-15*
 

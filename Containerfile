@@ -77,17 +77,6 @@ FROM ghcr.io/ublue-os/${BASE_IMAGE_NAME}-main:${FEDORA_MAJOR_VERSION}@${BASE_IMA
 ARG IMAGE_FLAVOR="main"
 ENV IMAGE_FLAVOR=${IMAGE_FLAVOR}
 
-### /opt
-## Some bootable images, like Fedora, have /opt symlinked to /var/opt, in order to
-## make it mutable/writable for users. However, some packages write files to this directory,
-## thus its contents might be wiped out when bootc deploys an image, making it troublesome for
-## some packages. Eg, google-chrome, docker-desktop.
-##
-## The following line makes /opt an immutable real directory so that packages
-## installed there are included in the image layers and correctly deployed by bootc.
-
-RUN rm /opt && mkdir /opt
-
 ### MODIFICATIONS
 ## Make modifications desired in your image and install packages by modifying the build scripts.
 ## The following RUN directive mounts the ctx stage which includes:
