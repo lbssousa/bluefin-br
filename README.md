@@ -37,6 +37,37 @@ Here are the changes from Bluefin. This image is based on [Bluefin](https://proj
 
 *Last updated: 2026-04-15*
 
+## Available Variants & Tags
+
+All images are published to `ghcr.io/lbssousa/<variant>:<tag>`.
+
+### Image Variants
+
+| Image | Description |
+|---|---|
+| `bluefin-br` | Base image — Bluefin with Brazilian customizations |
+| `bluefin-br-dx` | Developer Experience — adds dev tools on top of the base image |
+| `bluefin-br-nvidia` | Base + NVIDIA **580.xxx** proprietary drivers (for older GPUs dropped from 590.xxx) |
+| `bluefin-br-dx-nvidia` | DX + NVIDIA **580.xxx** proprietary drivers |
+| `bluefin-br-nvidia-open` | Base + NVIDIA **590.xxx** open kernel modules (for modern Turing/Ampere/Ada/Hopper GPUs) |
+| `bluefin-br-dx-nvidia-open` | DX + NVIDIA **590.xxx** open kernel modules |
+
+### Tags
+
+| Tag | Description |
+|---|---|
+| `stable` | Latest weekly promoted stable build (updated every Tuesday) |
+| `gts` | Alias for `stable` ("Guaranteed To be Stable") |
+| `stable-daily` | Latest daily build from the stable base |
+| `stable-NN.YYYYMMDD` | Timestamped stable build (`NN` = Fedora version, e.g. `44.20260415`) |
+| `stable-YYYYMMDD` | Short timestamped stable build (e.g. `20260415`) |
+| `gts-NN.YYYYMMDD` | Timestamped GTS build |
+| `gts-YYYYMMDD` | Short timestamped GTS build |
+| `stable-daily-NN.YYYYMMDD` | Timestamped stable-daily build |
+| `stable-daily-YYYYMMDD` | Short timestamped stable-daily build |
+
+> `NN` is the Fedora major version (currently **44**). Same-day rebuilds append a `.B` build counter (e.g. `44.20260415.1`).
+
 ## Getting Started
 
 Switch to this image on any existing Fedora Silverblue/Bluefin system:
