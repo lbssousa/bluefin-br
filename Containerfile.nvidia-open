@@ -19,6 +19,8 @@ ARG BASE_IMAGE_NAME="silverblue"
 ARG FEDORA_MAJOR_VERSION="44"
 ARG BASE_IMAGE_DIGEST="sha256:4c556548c3c8f59a059e923d2e61d633bc4e3318e8a5fabe18ead6ebbfe45c25"
 ARG IMAGE_FLAVOR="main"
+ARG IMAGE_NAME="bluefin-br-nvidia-open"
+ARG IMAGE_TAG="stable-daily"
 ARG AKMODS_TAG="main-44"
 ARG AKMODS_DIGEST="sha256:ac1ebda3be0b52a66c84aca7ecf1c02da6bb009ccb6d6942c7c74b1582f5d39c"
 ARG AKMODS_NVIDIA_TAG="main-44"
@@ -47,9 +49,13 @@ COPY --from=brew /system_files /oci/brew
 # Base Image - same silverblue-main base as the non-nvidia variants
 FROM ghcr.io/ublue-os/${BASE_IMAGE_NAME}-main:${FEDORA_MAJOR_VERSION}@${BASE_IMAGE_DIGEST}
 
-# Re-declare IMAGE_FLAVOR after FROM so it is available to RUN instructions
+# Re-declare build args after FROM so they are available to RUN instructions
 ARG IMAGE_FLAVOR="main"
+ARG IMAGE_NAME="bluefin-br-nvidia-open"
+ARG IMAGE_TAG="stable-daily"
 ENV IMAGE_FLAVOR=${IMAGE_FLAVOR}
+ENV IMAGE_NAME=${IMAGE_NAME}
+ENV IMAGE_TAG=${IMAGE_TAG}
 
 # Signal to build scripts that NVIDIA open drivers should be installed
 ENV IS_NVIDIA_OPEN="true"

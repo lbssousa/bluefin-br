@@ -257,6 +257,8 @@ jobs:
           build-args: |
             BASE_IMAGE_NAME=${{ matrix.base_image_name }}
             IMAGE_FLAVOR=${{ matrix.image_flavor }}
+            IMAGE_NAME=${{ env.IMAGE_NAME }}
+            IMAGE_TAG=${{ env.DEFAULT_TAG }}
             FEDORA_MAJOR_VERSION=${{ env.FEDORA_MAJOR_VERSION }}
             BASE_IMAGE_DIGEST=${{ env.BASE_IMAGE_DIGEST }}
             COMMON_IMAGE_DIGEST=${{ env.COMMON_IMAGE_DIGEST }}
@@ -334,8 +336,10 @@ jobs:
           username: ${{ env.REGISTRY_USER }}
           password: ${{ env.REGISTRY_PASSWORD }}
 
-      # OPTIONAL: Image Signing with Cosign
-      # Signing is disabled by default. To enable, see README.md "Optional: Enable Image Signing" section.
+      # Image Signing with Cosign
+      # Required: all images at ghcr.io/lbssousa must be signed because the image
+      # configures /etc/containers/policy.json to require sigstoreSigned verification
+      # for that registry namespace.
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
@@ -354,9 +358,8 @@ jobs:
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
 
-      # OPTIONAL: SBOM Attestation
+      # SBOM Attestation
       # Attaches SBOM (Software Bill of Materials) to your signed image for supply chain security.
-      # Requires image signing to be enabled first (see above).
       # Documentation: https://slsa.dev/spec/v1.0/requirements#provenance-available
 
       - name: Setup Syft

@@ -110,17 +110,19 @@ bash /ctx/build/build-gnome-extensions.sh
 echo "::group:: Generate Image Info"
 
 IMAGE_INFO="/usr/share/ublue-os/image-info.json"
-IMAGE_REF="ostree-image-signed:docker://ghcr.io/lbssousa/bluefin-br"
+image_name="${IMAGE_NAME:-bluefin-br}"
+IMAGE_REF="ostree-image-signed:docker://ghcr.io/lbssousa/${image_name}"
 
 image_flavor="${IMAGE_FLAVOR:-main}"
 
 mkdir -p /usr/share/ublue-os
 cat > "${IMAGE_INFO}" << EOF
 {
-  "image-name": "bluefin-br",
+  "image-name": "${image_name}",
   "image-flavor": "${image_flavor}",
   "image-vendor": "lbssousa",
   "image-ref": "${IMAGE_REF}",
+  "image-tag": "${IMAGE_TAG:-stable-daily}",
   "base-image-name": "silverblue"
 }
 EOF
