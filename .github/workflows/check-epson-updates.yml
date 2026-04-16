@@ -190,7 +190,7 @@ jobs:
           echo "can_auto_update=${CAN_AUTO_UPDATE}" >> "${GITHUB_OUTPUT}"
 
           ANY_CHANGED=false
-          [ "${ESCPR_CHANGED}" = "true" ] || [ "${UTILITY_CHANGED}" = "true" ] && ANY_CHANGED=true
+          if [ "${ESCPR_CHANGED}" = "true" ] || [ "${UTILITY_CHANGED}" = "true" ]; then ANY_CHANGED=true; fi
           echo "any_changed=${ANY_CHANGED}" >> "${GITHUB_OUTPUT}"
 
           echo "Summary: escpr=${ESCPR_VERSION} changed=${ESCPR_CHANGED} url=${ESCPR_URL:+yes}"
@@ -220,8 +220,8 @@ jobs:
         uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "fix: update Epson printer software to ${{ steps.resolve.outputs.escpr_version }}/${{ steps.resolve.outputs.utility_version }}"
-          title: "fix: update Epson printer software (${{ steps.resolve.outputs.escpr_changed == 'true' && format('escpr {0}', steps.resolve.outputs.escpr_version) || '' }}${{ steps.resolve.outputs.utility_changed == 'true' && format('utility {0}', steps.resolve.outputs.utility_version) || '' }})"
+          commit-message: "fix: update Epson printer software (escpr ${{ steps.resolve.outputs.escpr_version }}, utility ${{ steps.resolve.outputs.utility_version }})"
+          title: "fix: update Epson printer software (escpr ${{ steps.resolve.outputs.escpr_version }}, utility ${{ steps.resolve.outputs.utility_version }})"
           body: |
             ## Epson Printer Software Update
 
