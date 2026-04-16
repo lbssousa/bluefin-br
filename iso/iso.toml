@@ -7,9 +7,16 @@
 [customizations.installer.kickstart]
 contents = """
 %post
-# After installation, switch to the custom image from this repository
+# Copy containers policy and signing keys before switching
+# This ensures signature verification is available immediately after installation
+mkdir -p /etc/containers /usr/lib/pki/containers
+install -Dm0644 /run/install/target/etc/containers/policy.json /etc/containers/policy.json 2>/dev/null || true
+install -Dm0644 /run/install/target/etc/containers/registries.d/*.yaml /etc/containers/registries.d/ 2>/dev/null || true
+install -Dm0644 /run/install/target/usr/lib/pki/containers/lbssousa.pub /usr/lib/pki/containers/lbssousa.pub 2>/dev/null || true
+
+# After installation, switch to the custom image from this repository with signature verification
 # IMPORTANT: Update this URL to match your repository (ghcr.io/USERNAME/REPO:stable)
-bootc switch --mutate-in-place --transport registry ghcr.io/lbssousa/bluefin-br:stable
+bootc switch --mutate-in-place --enforce-container-sigpolicy ostree-image-signed:docker://ghcr.io/lbssousa/bluefin-br:stable
 %end
 """
 
