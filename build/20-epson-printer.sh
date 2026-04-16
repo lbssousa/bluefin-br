@@ -3,17 +3,17 @@
 set -eoux pipefail
 
 ###############################################################################
-# Install Epson ESC/P-R Printer Driver from Epson's website
+# Install Epson Printer Software from Epson's website
 ###############################################################################
-# Installs epson-inkjet-printer-escpr - Epson Inkjet Printer Driver (ESC/P-R)
-# for Linux. Built from Epson's source RPM to ensure compatibility with modern
-# Fedora.
+# Installs two packages obtained directly from Epson's Linux download portal:
 #
-# Source: https://support.epson.net/linux/Printer/LSB_distribution_pages/en/escpr.php
+# 1. epson-inkjet-printer-escpr - Epson Inkjet Printer Driver (ESC/P-R) for Linux
+#    Source: https://support.epson.net/linux/Printer/LSB_distribution_pages/en/escpr.php
+#    Built from Epson's source RPM to ensure compatibility with modern Fedora.
 #
-# NOTE: epson-printer-utility has been moved to Homebrew (lbssousa/homebrew-tap)
-# and is no longer included in the image. Install it at runtime with:
-#   brew tap lbssousa/tap && brew install epson-printer-utility
+# 2. epson-printer-utility - Epson Printer Utility for Linux
+#    Source: https://support.epson.net/linux/Printer/LSB_distribution_pages/en/utility.php
+#    Installed from Epson's binary RPM package.
 #
 # Version update:
 #   - CI: `.github/workflows/check-epson-updates.yml` (Epson API + AUR fallback)
@@ -34,7 +34,11 @@ ESCPR_SRPM_URL="https://download-center.epson.com/f/module/e934c1f6-0fc1-43e5-8d
 ESCPR_FALLBACK_VERSION="1.8.6"
 ESCPR_FALLBACK_URL="https://download3.ebz.epson.net/dsc/f/03/00/16/21/79/6d53e6ec3f8c1e55733eb7860e992a425883bf88/epson-inkjet-printer-escpr-${ESCPR_FALLBACK_VERSION}-1.src.rpm"
 
-
+# renovate: datasource=custom.epson-printer-utility
+UTILITY_VERSION="1.2.2"
+UTILITY_RPM_URL="https://download-center.epson.com/f/module/0fd7dd73-92c2-451e-88cf-cf385e0f6db7/epson-printer-utility-${UTILITY_VERSION}-1.x86_64.rpm"
+UTILITY_FALLBACK_VERSION="1.1.3"
+UTILITY_FALLBACK_URL="https://download3.ebz.epson.net/dsc/f/03/00/15/43/24/e0c56348985648be318592edd35955672826bf2c/epson-printer-utility-${UTILITY_FALLBACK_VERSION}-1.x86_64.rpm"
 
 # ── Download helper ───────────────────────────────────────────────────────
 # Tries the primary URL (download-center.epson.com) with a browser-like
@@ -122,6 +126,32 @@ popd
 
 echo "::endgroup::"
 
+echo "::group:: Install epson-printer-utility ${UTILITY_VERSION}"
+
+UTILITY_RPM="${ESCPR_BUILD_DIR}/epson-printer-utility.x86_64.rpm"
+
+download_epson \
+    "${UTILITY_RPM}" \
+    "${UTILITY_RPM_URL}" \
+    "${UTILITY_FALLBACK_URL}" \
+    "epson-printer-utility RPM"
+
+# Install the binary RPM:
+# --nodeps   : skip dependency checks (LSB compatibility shim not present on modern Fedora)
+# --nodigest : skip payload-digest verification; RPM 4.19+ (Fedora 40+) rejects
+#              packages built without a SHA-256 payload digest header, which
+#              applies to this older Epson binary RPM
+rpm -i --nodeps --nodigest "${UTILITY_RPM}"
+
+echo "::endgroup::"
+
+echo "::group:: Enable Services"
+
+# Enable the Epson Connect Billing Daemon used by epson-printer-utility
+systemctl enable ecbd.service || true
+
+echo "::endgroup::"
+
 echo "::group:: Cleanup Build Dependencies"
 
 dnf5 remove -y \
@@ -136,4 +166,4 @@ rm -rf "${ESCPR_BUILD_DIR}"
 
 echo "::endgroup::"
 
-echo "Epson ESC/P-R driver installation complete!"
+echo "Epson printer software installation complete!"

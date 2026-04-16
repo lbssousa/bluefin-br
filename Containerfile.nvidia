@@ -60,6 +60,9 @@ ENV IMAGE_TAG=${IMAGE_TAG}
 # Signal to build scripts that NVIDIA LTS drivers should be installed
 ENV IS_NVIDIA_LTS="true"
 
+### /opt
+RUN rm /opt && mkdir /opt
+
 ### MODIFICATIONS
 ## The nvidia variant mounts the akmods-nvidia-lts RPMs at /tmp/akmods-nv-rpms.
 ## The nvidia-lts.sh script (called from 10-build.sh when IS_NVIDIA_LTS=true)
