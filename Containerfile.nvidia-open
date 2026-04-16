@@ -60,6 +60,9 @@ ENV IMAGE_TAG=${IMAGE_TAG}
 # Signal to build scripts that NVIDIA open drivers should be installed
 ENV IS_NVIDIA_OPEN="true"
 
+### /opt
+RUN rm /opt && mkdir /opt
+
 ### MODIFICATIONS
 ## The nvidia-open variant mounts the akmods-nvidia-open RPMs at /tmp/akmods-nv-rpms.
 ## The nvidia-open.sh script (called from 10-build.sh when IS_NVIDIA_OPEN=true)

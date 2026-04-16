@@ -1,8 +1,8 @@
 ---
 ###############################################################################
-# Check Epson ESC/P-R Driver Updates
+# Check Epson Package Updates
 ###############################################################################
-# Checks for new versions of the Epson ESC/P-R driver using two data sources:
+# Checks for new versions of Epson printer software using two data sources:
 #
 # 1. Epson Download Center REST API (download-center.epson.com/api/v1/modules/)
 #    Returns JSON with version + download URL. Behind Akamai WAF — requires
@@ -11,11 +11,8 @@
 # 2. AUR RPC v5 API (aur.archlinux.org/rpc/v5/info) — fallback version oracle.
 #    Always works, no anti-bot. Returns version only (no download URL).
 #
-# NOTE: epson-printer-utility has been moved to Homebrew (lbssousa/homebrew-tap)
-# and is no longer tracked by this workflow.
-#
 # Strategy:
-#   - Query Epson API for version AND URL (best case: auto-update PR)
+#   - Query Epson API for versions AND URLs (best case: auto-update PR)
 #   - Query AUR API for version cross-validation + fallback
 #   - If version changed but URL unavailable: create issue alerting maintainer
 #     to run the local script (scripts/check-epson-updates.sh)
@@ -23,7 +20,7 @@
 # Local fallback script: scripts/check-epson-updates.sh
 #   Run locally when this workflow cannot obtain download URLs.
 ###############################################################################
-name: Check Epson ESC/P-R Driver Updates
+name: Check Epson Package Updates
 on:
   schedule:
     - cron: '0 8 * * 1'  # Every Monday at 08:00 UTC
@@ -36,25 +33,27 @@ permissions:
 
 jobs:
   check_updates:
-    name: Check for Epson ESC/P-R driver updates
+    name: Check for Epson package updates
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Read current version
+      - name: Read current versions
         id: current
         run: |
           set -euo pipefail
           ESCPR_VERSION=$(grep 'ESCPR_VERSION=' build/20-epson-printer.sh | head -1 | grep -oP '\d+\.\d+\.\d+')
+          UTILITY_VERSION=$(grep 'UTILITY_VERSION=' build/20-epson-printer.sh | head -1 | grep -oP '\d+\.\d+\.\d+')
           echo "escpr_version=${ESCPR_VERSION}" >> "${GITHUB_OUTPUT}"
-          echo "Current escpr: ${ESCPR_VERSION}"
+          echo "utility_version=${UTILITY_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "Current escpr: ${ESCPR_VERSION}, utility: ${UTILITY_VERSION}"
 
       # ── Data Source 1: Epson Download Center API ──────────────────────
-      # Uses the L3250 Series device listing which includes the ESC/P-R
-      # driver (source RPM). The API is behind Akamai CDN/WAF; a browser
-      # User-Agent is required.
+      # Uses the L3250 Series device listing which includes both the
+      # ESC/P-R driver (source RPM) and the Printer Utility (binary RPM).
+      # The API is behind Akamai CDN/WAF; a browser User-Agent is required.
       - name: Query Epson Download Center API
         id: epson_api
         run: |
@@ -75,6 +74,8 @@ jobs:
             echo "api_ok=false" >> "${GITHUB_OUTPUT}"
             echo "escpr_version=" >> "${GITHUB_OUTPUT}"
             echo "escpr_url=" >> "${GITHUB_OUTPUT}"
+            echo "utility_version=" >> "${GITHUB_OUTPUT}"
+            echo "utility_url=" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
 
@@ -99,8 +100,25 @@ jobs:
           echo "escpr_version=${ESCPR_VERSION}" >> "${GITHUB_OUTPUT}"
           echo "escpr_url=${ESCPR_URL}" >> "${GITHUB_OUTPUT}"
 
+          # Extract printer utility RPM
+          UTILITY_VERSION=$(echo "${API_JSON}" | jq -r '
+            .items[]
+            | select(.url != null)
+            | select(.url | test("printer-utility.*\\.x86_64\\.rpm$"))
+            | .version' | head -1)
+          UTILITY_URL=$(echo "${API_JSON}" | jq -r '
+            .items[]
+            | select(.url != null)
+            | select(.url | test("printer-utility.*\\.x86_64\\.rpm$"))
+            | .url' | head -1)
+
+          echo "Epson API - escpr: ${ESCPR_VERSION:-not found}, utility: ${UTILITY_VERSION:-not found}"
+
+          echo "utility_version=${UTILITY_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "utility_url=${UTILITY_URL}" >> "${GITHUB_OUTPUT}"
+
       # ── Data Source 2: AUR RPC API (fallback version oracle) ──────────
-      # The AUR community tracks this package. The RPC API is stable and
+      # The AUR community tracks these packages. The RPC API is stable and
       # has no anti-bot protection. Used to cross-validate or as fallback
       # when the Epson API is blocked.
       - name: Query AUR RPC API
@@ -109,7 +127,7 @@ jobs:
           set -euo pipefail
 
           AUR_URL="https://aur.archlinux.org/rpc/v5/info"
-          AUR_URL+="?arg[]=epson-inkjet-printer-escpr"
+          AUR_URL+="?arg[]=epson-inkjet-printer-escpr&arg[]=epson-printer-utility"
 
           echo "Querying AUR RPC API..."
           AUR_JSON=$(curl --silent --location --max-time 15 "${AUR_URL}" 2>/dev/null) || true
@@ -117,6 +135,7 @@ jobs:
           if [ -z "${AUR_JSON}" ] || ! echo "${AUR_JSON}" | jq -e '.results' > /dev/null 2>&1; then
             echo "::warning::AUR RPC API unreachable"
             echo "escpr_version=" >> "${GITHUB_OUTPUT}"
+            echo "utility_version=" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
 
@@ -125,93 +144,124 @@ jobs:
             .results[]
             | select(.Name == "epson-inkjet-printer-escpr")
             | .Version' | sed 's/-[0-9]*$//')
+          AUR_UTILITY=$(echo "${AUR_JSON}" | jq -r '
+            .results[]
+            | select(.Name == "epson-printer-utility")
+            | .Version' | sed 's/-[0-9]*$//')
 
-          echo "AUR - escpr: ${AUR_ESCPR:-not found}"
+          echo "AUR - escpr: ${AUR_ESCPR:-not found}, utility: ${AUR_UTILITY:-not found}"
 
           echo "escpr_version=${AUR_ESCPR}" >> "${GITHUB_OUTPUT}"
+          echo "utility_version=${AUR_UTILITY}" >> "${GITHUB_OUTPUT}"
 
-      # ── Determine final version and URL ────────────────────────────────
-      - name: Resolve version
+      # ── Determine final versions and URLs ─────────────────────────────
+      - name: Resolve versions
         id: resolve
         run: |
           set -euo pipefail
 
-          # Prefer Epson API (has URL), fall back to AUR (version only)
+          # Prefer Epson API (has URLs), fall back to AUR (version only)
           ESCPR_VERSION="${{ steps.epson_api.outputs.escpr_version }}"
           ESCPR_URL="${{ steps.epson_api.outputs.escpr_url }}"
+          UTILITY_VERSION="${{ steps.epson_api.outputs.utility_version }}"
+          UTILITY_URL="${{ steps.epson_api.outputs.utility_url }}"
 
-          # Fall back to AUR if Epson API didn't return version
+          # Fall back to AUR if Epson API didn't return versions
           [ -z "${ESCPR_VERSION}" ] && ESCPR_VERSION="${{ steps.aur_api.outputs.escpr_version }}"
+          [ -z "${UTILITY_VERSION}" ] && UTILITY_VERSION="${{ steps.aur_api.outputs.utility_version }}"
 
           # Determine what changed
           ESCPR_CHANGED=false
+          UTILITY_CHANGED=false
           [ -n "${ESCPR_VERSION}" ] && [ "${ESCPR_VERSION}" != "${{ steps.current.outputs.escpr_version }}" ] && ESCPR_CHANGED=true
+          [ -n "${UTILITY_VERSION}" ] && [ "${UTILITY_VERSION}" != "${{ steps.current.outputs.utility_version }}" ] && UTILITY_CHANGED=true
 
           echo "escpr_version=${ESCPR_VERSION}" >> "${GITHUB_OUTPUT}"
           echo "escpr_url=${ESCPR_URL}" >> "${GITHUB_OUTPUT}"
           echo "escpr_changed=${ESCPR_CHANGED}" >> "${GITHUB_OUTPUT}"
+          echo "utility_version=${UTILITY_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "utility_url=${UTILITY_URL}" >> "${GITHUB_OUTPUT}"
+          echo "utility_changed=${UTILITY_CHANGED}" >> "${GITHUB_OUTPUT}"
 
-          # Can we auto-update? Only if we have both version AND URL
+          # Can we auto-update? Only if we have both version AND URL for every changed package
           CAN_AUTO_UPDATE=true
           if [ "${ESCPR_CHANGED}" = "true" ] && [ -z "${ESCPR_URL}" ]; then CAN_AUTO_UPDATE=false; fi
+          if [ "${UTILITY_CHANGED}" = "true" ] && [ -z "${UTILITY_URL}" ]; then CAN_AUTO_UPDATE=false; fi
           echo "can_auto_update=${CAN_AUTO_UPDATE}" >> "${GITHUB_OUTPUT}"
 
+          ANY_CHANGED=false
+          if [ "${ESCPR_CHANGED}" = "true" ] || [ "${UTILITY_CHANGED}" = "true" ]; then ANY_CHANGED=true; fi
+          echo "any_changed=${ANY_CHANGED}" >> "${GITHUB_OUTPUT}"
+
           echo "Summary: escpr=${ESCPR_VERSION} changed=${ESCPR_CHANGED} url=${ESCPR_URL:+yes}"
+          echo "Summary: utility=${UTILITY_VERSION} changed=${UTILITY_CHANGED} url=${UTILITY_URL:+yes}"
           echo "Summary: can_auto_update=${CAN_AUTO_UPDATE}"
 
       # ── Auto-update path: version + URL available ─────────────────────
       - name: Update build script
         id: update_script
-        if: steps.resolve.outputs.escpr_changed == 'true' && steps.resolve.outputs.can_auto_update == 'true'
+        if: steps.resolve.outputs.any_changed == 'true' && steps.resolve.outputs.can_auto_update == 'true'
         run: |
           set -euo pipefail
 
-          sed -i "s|ESCPR_VERSION=\"[0-9.]*\"|ESCPR_VERSION=\"${{ steps.resolve.outputs.escpr_version }}\"|" build/20-epson-printer.sh
-          sed -i "s|ESCPR_SRPM_URL=\"[^\"]*\"|ESCPR_SRPM_URL=\"${{ steps.resolve.outputs.escpr_url }}\"|" build/20-epson-printer.sh
-          echo "Updated escpr to ${{ steps.resolve.outputs.escpr_version }}"
+          if [ "${{ steps.resolve.outputs.escpr_changed }}" = "true" ]; then
+            sed -i "s|ESCPR_VERSION=\"[0-9.]*\"|ESCPR_VERSION=\"${{ steps.resolve.outputs.escpr_version }}\"|" build/20-epson-printer.sh
+            sed -i "s|ESCPR_SRPM_URL=\"[^\"]*\"|ESCPR_SRPM_URL=\"${{ steps.resolve.outputs.escpr_url }}\"|" build/20-epson-printer.sh
+            echo "Updated escpr to ${{ steps.resolve.outputs.escpr_version }}"
+          fi
+          if [ "${{ steps.resolve.outputs.utility_changed }}" = "true" ]; then
+            sed -i "s|UTILITY_VERSION=\"[0-9.]*\"|UTILITY_VERSION=\"${{ steps.resolve.outputs.utility_version }}\"|" build/20-epson-printer.sh
+            sed -i "s|UTILITY_RPM_URL=\"[^\"]*\"|UTILITY_RPM_URL=\"${{ steps.resolve.outputs.utility_url }}\"|" build/20-epson-printer.sh
+            echo "Updated utility to ${{ steps.resolve.outputs.utility_version }}"
+          fi
 
       - name: Create Pull Request (auto-update)
-        if: steps.resolve.outputs.escpr_changed == 'true' && steps.resolve.outputs.can_auto_update == 'true'
+        if: steps.resolve.outputs.any_changed == 'true' && steps.resolve.outputs.can_auto_update == 'true'
         uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "fix: update Epson ESC/P-R driver to ${{ steps.resolve.outputs.escpr_version }}"
-          title: "fix: update Epson ESC/P-R driver to ${{ steps.resolve.outputs.escpr_version }}"
+          commit-message: "fix: update Epson printer software (escpr ${{ steps.resolve.outputs.escpr_version }}, utility ${{ steps.resolve.outputs.utility_version }})"
+          title: "fix: update Epson printer software (escpr ${{ steps.resolve.outputs.escpr_version }}, utility ${{ steps.resolve.outputs.utility_version }})"
           body: |
-            ## Epson ESC/P-R Driver Update
+            ## Epson Printer Software Update
 
-            Automated update of the Epson ESC/P-R driver.
-            Version discovered via Epson Download Center API.
+            Automated update of Epson printer packages.
+            Versions discovered via Epson Download Center API.
 
             | Package | Current | New | URL |
             |---------|---------|-----|-----|
             | escpr | `${{ steps.current.outputs.escpr_version }}` | `${{ steps.resolve.outputs.escpr_version }}` | [src.rpm](${{ steps.resolve.outputs.escpr_url }}) |
+            | utility | `${{ steps.current.outputs.utility_version }}` | `${{ steps.resolve.outputs.utility_version }}` | [x86_64.rpm](${{ steps.resolve.outputs.utility_url }}) |
 
-            Please review and merge to rebuild the image with the updated driver.
+            Please review and merge to rebuild the image with the updated packages.
           branch: "renovate/epson-printer-updates"
           labels: "renovate"
           delete-branch: true
 
       # ── Fallback path: version changed but no URL (Epson API blocked) ─
       - name: Create issue (manual update needed)
-        if: steps.resolve.outputs.escpr_changed == 'true' && steps.resolve.outputs.can_auto_update == 'false'
+        if: steps.resolve.outputs.any_changed == 'true' && steps.resolve.outputs.can_auto_update == 'false'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
             const escprVersion = '${{ steps.resolve.outputs.escpr_version }}';
             const escprUrl = '${{ steps.resolve.outputs.escpr_url }}';
+            const utilityVersion = '${{ steps.resolve.outputs.utility_version }}';
+            const utilityUrl = '${{ steps.resolve.outputs.utility_url }}';
 
-            let body = '## Epson ESC/P-R Driver Update Available (Manual Action Needed)\n\n';
-            body += 'A new Epson ESC/P-R driver version was detected but the Epson Download Center API\n';
+            let body = '## Epson Printer Software Update Available (Manual Action Needed)\n\n';
+            body += 'A new Epson package version was detected but the Epson Download Center API\n';
             body += 'was blocked by Akamai WAF, so the download URL could not be obtained automatically.\n\n';
-            body += '### Detected Update\n\n';
+            body += '### Detected Updates\n\n';
             body += `- **escpr**: \`${{ steps.current.outputs.escpr_version }}\` → \`${escprVersion}\``;
             body += escprUrl ? ` ([URL available](${escprUrl}))\n` : ' (URL not available)\n';
+            body += `- **utility**: \`${{ steps.current.outputs.utility_version }}\` → \`${utilityVersion}\``;
+            body += utilityUrl ? ` ([URL available](${utilityUrl}))\n` : ' (URL not available)\n';
             body += '\n### How to Update\n\n';
             body += 'Run the local update script to get the download URL:\n\n';
             body += '```bash\n./scripts/check-epson-updates.sh --update\n```\n\n';
             body += 'The script queries the Epson Download Center API with proper session\n';
-            body += 'handling and updates `build/20-epson-printer.sh` with the new version and URL.\n';
+            body += 'handling and updates `build/20-epson-printer.sh` with the new versions and URLs.\n';
 
             // Check for existing open issue to avoid duplicates
             const issues = await github.rest.issues.listForRepo({
@@ -236,7 +286,7 @@ jobs:
               await github.rest.issues.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                title: 'fix: Epson ESC/P-R driver update available (manual action needed)',
+                title: 'fix: Epson printer software update available (manual action needed)',
                 body: body,
                 labels: ['epson-update'],
               });
