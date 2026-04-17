@@ -12,6 +12,7 @@ Here are the changes from Bluefin. This image is based on [Bluefin](https://proj
 - **Epson Inkjet Printer Driver (ESC/P-R)** (`epson-inkjet-printer-escpr`): Legacy Epson inkjet driver for printers that are **not** compatible with the newer `escpr2` driver. Built from Epson's source RPM for compatibility with modern Fedora. See [Epson Linux support page](https://support.epson.net/linux/Printer/LSB_distribution_pages/en/escpr.php).
 - **Epson Printer Utility** (`epson-printer-utility`): Graphical utility for printer maintenance tasks such as nozzle check, print head cleaning, and ink level monitoring. Installed from Epson's official binary RPM. See [Epson Linux support page](https://support.epson.net/linux/Printer/LSB_distribution_pages/en/utility.php).
 - **libfprint with Goodix 538d support**: Custom build of [libfprint](https://fprint.freedesktop.org/) from the [Infinytum fork](https://github.com/infinytum/libfprint/tree/unstable) that adds community-developed Goodix TLS drivers — including `goodixtls53xd` for the **Goodix 538d** fingerprint reader (USB `27c6:538d`). Replaces the system `libfprint` while preserving ABI compatibility. See also [AUR `libfprint-goodix-521d`](https://aur.archlinux.org/packages/libfprint-goodix-521d) (same fork; the package name references the 521d but the fork includes drivers for the entire Goodix TLS family: 511, 52xd, and 53xd).
+- **Goodix FP Dump** (`/opt/goodix-fp-dump`): Python scripts from [goodix-fp-linux-dev/goodix-fp-dump](https://github.com/goodix-fp-linux-dev/goodix-fp-dump) for communicating with, dumping firmware from, and reverse-engineering Goodix USB fingerprint sensors. Installed together with the [goodix-firmware](https://github.com/goodix-fp-linux-dev/goodix-firmware) submodule and a pre-built Python virtual environment containing all required dependencies (`pyusb`, `crcmod`, `python-periphery`, `spidev`, `pycryptodome`, `crccheck`). See the [Goodix Fingerprint Sensor Scripts](#goodix-fingerprint-sensor-scripts) section for usage instructions.
 
 ### Enabled Services
 - `big-parental-daemon.service` — Rust D-Bus daemon for ECA Digital age-range signaling
@@ -32,7 +33,7 @@ Here are the changes from Bluefin. This image is based on [Bluefin](https://proj
 - Based on `ghcr.io/ublue-os/silverblue-main:latest` — identical to Bluefin's base
 - `/opt` is an immutable real directory (not a symlink to `/var/opt`) so that packages installed there — such as `epson-printer-utility` — are correctly included in the image layers and deployed by bootc.
 
-*Last updated: 2026-04-15*
+*Last updated: 2026-04-17*
 
 ## Container Image Signature Verification
 
@@ -173,3 +174,64 @@ sudo bootc switch ghcr.io/lbssousa/bluefin-br:stable
 sudo systemctl reboot
 ```
 
+---
+
+## Goodix Fingerprint Sensor Scripts
+
+The image ships the [goodix-fp-dump](https://github.com/goodix-fp-linux-dev/goodix-fp-dump) toolkit pre-installed at `/opt/goodix-fp-dump`. It provides Python scripts for communicating with Goodix USB fingerprint sensors — useful for firmware dumping, protocol analysis, and driver development.
+
+> **Note from upstream**: These scripts are considered experimental and unstable. They are provided for developer and researcher use.
+
+### Prerequisites
+
+Connect your Goodix fingerprint sensor via USB and identify its USB product ID:
+
+```bash
+sudo lsusb -vd "27c6:" | grep "idProduct"
+```
+
+The reported product ID (e.g. `538d`) determines which script to run.
+
+### Running a Script
+
+The required Python dependencies are pre-installed in a virtual environment at `/opt/goodix-fp-dump/.venv`. Because the scripts require direct USB access, they must be run with `sudo`.
+
+```bash
+cd /opt/goodix-fp-dump
+
+# Run the script matching your device's USB product ID (replace "538d" with yours)
+sudo .venv/bin/python3 run_538d.py
+```
+
+Available `run_*.py` scripts (one per supported sensor):
+
+| Script | Sensor |
+|---|---|
+| `run_5110.py` | Goodix 5110 |
+| `run_5117.py` | Goodix 5117 |
+| `run_5120_spi.py` | Goodix 5120 (SPI) |
+| `run_521d.py` | Goodix 521d |
+| `run_532d.py` | Goodix 532d |
+| `run_5385.py` | Goodix 5385 |
+| `run_538d.py` | Goodix 538d |
+| `run_5395.py` | Goodix 5395 |
+| `run_5503.py` | Goodix 5503 |
+| `run_55a4.py` | Goodix 55a4 |
+| `run_55b4.py` | Goodix 55b4 |
+
+### Firmware Files
+
+Firmware binaries for each sensor family are located in `/opt/goodix-fp-dump/firmware/` (sourced from the [goodix-firmware](https://github.com/goodix-fp-linux-dev/goodix-firmware) submodule).
+
+### Updating the Scripts
+
+Because `/opt` is an immutable layer on this bootc image (by design, for reproducibility), you cannot modify the scripts in-place. If you need a newer or custom version of goodix-fp-dump, clone it to your home directory and create a separate virtual environment there:
+
+```bash
+git clone --recurse-submodules https://github.com/goodix-fp-linux-dev/goodix-fp-dump.git ~/goodix-fp-dump
+cd ~/goodix-fp-dump
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+sudo .venv/bin/python3 run_538d.py
+```
