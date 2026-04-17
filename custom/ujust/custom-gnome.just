@@ -10,9 +10,10 @@ toggle-bluefin-gnome:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    # Detect current state: check if dash-to-dock is among the enabled extensions
+    # Detect current state: check Bluefin-specific markers (minimize/maximize buttons and extensions)
+    CURRENT_LAYOUT="$(gsettings get org.gnome.desktop.wm.preferences button-layout)"
     CURRENT_EXTENSIONS="$(gsettings get org.gnome.shell enabled-extensions)"
-    if echo "${CURRENT_EXTENSIONS}" | grep -q "dash-to-dock"; then
+    if echo "${CURRENT_EXTENSIONS}" | grep -qF 'dash-to-dock' || [[ "${CURRENT_LAYOUT}" == "':minimize,maximize,close'" ]]; then
         CURRENT_STATE="enabled"
     else
         CURRENT_STATE="disabled"
