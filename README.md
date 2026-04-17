@@ -98,6 +98,46 @@ sudo bootc switch ghcr.io/lbssousa/bluefin-br:stable
 sudo systemctl reboot
 ```
 
+---
+
+## Bluefin GNOME Customizations
+
+This image ships all of Bluefin's standard GNOME customizations (extensions, keybindings, fonts, Dash-to-Dock, and more). You can toggle them on or off at any time without rebasing using the `ujust toggle-bluefin-gnome` recipe.
+
+### Usage
+
+```bash
+# Auto-detect current state and flip it (interactive prompt)
+ujust toggle-bluefin-gnome
+
+# Force-enable Bluefin customizations (no-op if already enabled)
+ujust toggle-bluefin-gnome enable
+
+# Force-disable Bluefin customizations and restore vanilla GNOME defaults (no-op if already disabled)
+ujust toggle-bluefin-gnome disable
+```
+
+### What is toggled
+
+| Category | Bluefin value | GNOME upstream default |
+|---|---|---|
+| Extensions | Dash-to-Dock, Blur My Shell, GSConnect, AppIndicator, … | None |
+| Window buttons | Minimize + Maximize + Close | Close only |
+| Interface fonts | Adwaita Sans 12 / JetBrains Mono 16 | Adwaita Sans 11 / Monospace 11 |
+| Font antialiasing | RGBA subpixel | Grayscale |
+| Keybindings | `<Super>d` show-desktop, `<Super>e` home, `<Shift><Super>space` input source | Defaults (unbound / standard) |
+| Numlock on login | On | Off |
+| Power button action | Interactive (show dialog) | Suspend |
+| Directories first | Yes (file chooser) | No |
+| GNOME Software updates | Download disabled (managed by bootc) | Enabled |
+| Mutter experimental features | Fractional scaling + XWayland native scaling | None |
+| Volume above 100% | Allowed | Not allowed |
+| New window centering | Yes | No |
+
+> **Note**: Disabling sets explicit user-level overrides with vanilla GNOME values. Re-enabling clears those overrides so the system-level Bluefin defaults take effect again.
+
+---
+
 ## NVIDIA Images & Secure Boot
 
 The `bluefin-br-nvidia` and `bluefin-br-nvidia-open` image variants include pre-built NVIDIA kernel modules. Because these out-of-tree kernel modules are signed with the Universal Blue key, they require **Secure Boot MOK (Machine Owner Key) enrollment** before the modules can load.
