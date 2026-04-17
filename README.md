@@ -42,18 +42,19 @@ Here are the changes from Bluefin. This image is based on [Bluefin](https://proj
 If you see `ostree-unverified-registry:` in the output of `bootc status`, this means the container registry hostname does not have a signature verification policy configured in your current environment. **This does NOT mean the image is unsigned** — our images are cryptographically signed with sigstore.
 
 **When this appears:**
-- **After ISO installation** (before first pacman update): Normal. The installer hasn't copied `/etc/containers/policy.json` yet.
+- **After ISO installation**: Normal. The live installer environment doesn't have `/etc/containers/policy.json` configured yet; policy takes effect after the first boot into the installed system.
 - **After manual rebase** (without `--enforce-container-sigpolicy`): The temporary environment defaults to insecure policy.
 - **Expected behavior**: Changes to `ostree-image-signed:` once policy.json is in place and you use `--enforce-container-sigpolicy`.
 
 **To explicitly enforce signature verification:**
 ```bash
-sudo bootc switch --enforce-container-sigpolicy ostree-image-signed:docker://ghcr.io/lbssousa/bluefin-br:stable
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/lbssousa/bluefin-br:stable
 ```
 
 **To verify our signatures are valid:**
 ```bash
-skopeo inspect docker://ghcr.io/lbssousa/bluefin-br:stable | grep -i sig
+cosign verify --key https://raw.githubusercontent.com/lbssousa/bluefin-br/main/cosign.pub \
+  ghcr.io/lbssousa/bluefin-br:stable
 ```
 
 ---
