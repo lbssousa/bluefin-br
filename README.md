@@ -98,6 +98,57 @@ sudo bootc switch ghcr.io/lbssousa/bluefin-br:stable
 sudo systemctl reboot
 ```
 
+---
+
+## Bluefin GNOME Customizations
+
+This image ships all of Bluefin's standard GNOME customizations (extensions, keybindings, fonts, Dash-to-Dock, and more). You can toggle them on or off at any time without rebasing using the `ujust toggle-bluefin-gnome` recipe.
+
+### Usage
+
+```bash
+# Auto-detect current state and flip it (interactive prompt).
+# If settings are in a mixed state, you will be asked to choose enable or disable.
+ujust toggle-bluefin-gnome
+
+# Apply all Bluefin defaults (no-op if already fully enabled;
+# shows a warning and proceeds if in a mixed state)
+ujust toggle-bluefin-gnome enable
+
+# Apply all vanilla GNOME defaults (no-op if already fully disabled;
+# shows a warning and proceeds if in a mixed state)
+ujust toggle-bluefin-gnome disable
+```
+
+### Mixed / partial state
+
+State detection uses five representative indicator keys. When at least one key is at its Bluefin value and at least one is at its GNOME upstream default, the state is reported as **mixed** (i.e. some settings were manually changed):
+
+- **`toggle`** — displays an explanation and prompts you to pick `enable` or `disable` explicitly via an interactive menu; no automatic flip is performed.
+- **`enable`** — shows a warning that some settings were changed, then forces **all** settings to Bluefin defaults. Keys that already have their Bluefin value are silently reset (idempotent).
+- **`disable`** — shows a warning that some settings were changed, then forces **all** settings to vanilla GNOME defaults. Keys already at their GNOME default are silently re-applied (idempotent).
+
+### What is toggled
+
+| Category | Bluefin value | GNOME upstream default |
+|---|---|---|
+| Extensions | Dash-to-Dock, Blur My Shell, GSConnect, AppIndicator, … | None |
+| Window buttons | Minimize + Maximize + Close | Close only |
+| Interface fonts | Adwaita Sans 12 / JetBrains Mono 16 | Adwaita Sans 11 / Monospace 11 |
+| Font antialiasing | RGBA subpixel | Grayscale |
+| Keybindings | `<Super>d` show-desktop, `<Super>e` home, `<Shift><Super>space` input source | Defaults (unbound / standard) |
+| Numlock on login | On | Off |
+| Power button action | Interactive (show dialog) | Suspend |
+| Directories first | Yes (file chooser) | No |
+| GNOME Software updates | Download disabled (managed by bootc) | Enabled |
+| Mutter experimental features | Fractional scaling + XWayland native scaling | None |
+| Volume above 100% | Allowed | Not allowed |
+| New window centering | Yes | No |
+
+> **Note**: Disabling sets explicit user-level overrides with vanilla GNOME values. Re-enabling clears those overrides so the system-level Bluefin defaults take effect again. Both operations are idempotent — running them again when already in the target state is safe.
+
+---
+
 ## NVIDIA Images & Secure Boot
 
 The `bluefin-br-nvidia` and `bluefin-br-nvidia-open` image variants include pre-built NVIDIA kernel modules. Because these out-of-tree kernel modules are signed with the Universal Blue key, they require **Secure Boot MOK (Machine Owner Key) enrollment** before the modules can load.
