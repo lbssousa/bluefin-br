@@ -110,11 +110,48 @@ toggle-bluefin-gnome ACTION="toggle":
         echo "Log out and log back in for all changes to take effect."
     }
 
+    # Checks five representative settings and returns "enabled", "disabled", or "partial".
+    # "partial" means at least one key is at its Bluefin default AND at least one is at
+    # its vanilla GNOME default, indicating that some settings were changed manually.
     _detect_state() {
-        local layout extensions
+        local layout extensions numlock center_windows volume
+        local bluefin_count=0 gnome_count=0
+
         layout="$(gsettings get org.gnome.desktop.wm.preferences button-layout)"
         extensions="$(gsettings get org.gnome.shell enabled-extensions)"
-        if [[ "${extensions}" == *'dash-to-dock'* ]] || [[ "${layout}" == *'minimize,maximize,close'* ]]; then
+        numlock="$(gsettings get org.gnome.desktop.peripherals.keyboard numlock-state)"
+        center_windows="$(gsettings get org.gnome.mutter center-new-windows)"
+        volume="$(gsettings get org.gnome.desktop.sound allow-volume-above-100-percent)"
+
+        if [[ "${extensions}" == *'dash-to-dock'* ]]; then
+            (( ++bluefin_count ))
+        else
+            (( ++gnome_count ))
+        fi
+        if [[ "${layout}" == *'minimize,maximize,close'* ]]; then
+            (( ++bluefin_count ))
+        else
+            (( ++gnome_count ))
+        fi
+        if [[ "${numlock}" == "true" ]]; then
+            (( ++bluefin_count ))
+        else
+            (( ++gnome_count ))
+        fi
+        if [[ "${center_windows}" == "true" ]]; then
+            (( ++bluefin_count ))
+        else
+            (( ++gnome_count ))
+        fi
+        if [[ "${volume}" == "true" ]]; then
+            (( ++bluefin_count ))
+        else
+            (( ++gnome_count ))
+        fi
+
+        if (( bluefin_count > 0 && gnome_count > 0 )); then
+            echo "partial"
+        elif (( bluefin_count > 0 )); then
             echo "enabled"
         else
             echo "disabled"
@@ -124,12 +161,26 @@ toggle-bluefin-gnome ACTION="toggle":
     case "${ACTION}" in
         "toggle")
             CURRENT_STATE="$(_detect_state)"
-            echo "Bluefin GNOME customizations are currently: ${CURRENT_STATE}"
-            echo ""
-            if [[ "${CURRENT_STATE}" == "enabled" ]]; then
+            if [[ "${CURRENT_STATE}" == "partial" ]]; then
+                echo "Bluefin GNOME customizations are in a mixed state — some settings have"
+                echo "been manually changed and no longer match either Bluefin defaults or"
+                echo "vanilla GNOME defaults."
+                echo ""
+                echo "Please choose how to proceed:"
+                CHOICE="$(gum choose "enable" "disable")" || exit 0
+                if [[ "${CHOICE}" == "enable" ]]; then
+                    _enable_bluefin_gnome
+                else
+                    _disable_bluefin_gnome
+                fi
+            elif [[ "${CURRENT_STATE}" == "enabled" ]]; then
+                echo "Bluefin GNOME customizations are currently: enabled"
+                echo ""
                 gum confirm "Disable all Bluefin GNOME customizations?" || exit 0
                 _disable_bluefin_gnome
             else
+                echo "Bluefin GNOME customizations are currently: disabled"
+                echo ""
                 gum confirm "Enable all Bluefin GNOME customizations?" || exit 0
                 _enable_bluefin_gnome
             fi
@@ -137,8 +188,13 @@ toggle-bluefin-gnome ACTION="toggle":
         "enable")
             CURRENT_STATE="$(_detect_state)"
             if [[ "${CURRENT_STATE}" == "enabled" ]]; then
-                echo "Bluefin GNOME customizations are already enabled."
+                echo "Bluefin GNOME customizations are already fully enabled."
                 exit 0
+            fi
+            if [[ "${CURRENT_STATE}" == "partial" ]]; then
+                echo "Some Bluefin GNOME customizations have been manually changed."
+                echo "Proceeding will restore all settings to Bluefin defaults."
+                echo ""
             fi
             gum confirm "Enable all Bluefin GNOME customizations?" || exit 0
             _enable_bluefin_gnome
@@ -146,8 +202,13 @@ toggle-bluefin-gnome ACTION="toggle":
         "disable")
             CURRENT_STATE="$(_detect_state)"
             if [[ "${CURRENT_STATE}" == "disabled" ]]; then
-                echo "Bluefin GNOME customizations are already disabled."
+                echo "Bluefin GNOME customizations are already fully disabled."
                 exit 0
+            fi
+            if [[ "${CURRENT_STATE}" == "partial" ]]; then
+                echo "Some Bluefin GNOME customizations have been manually changed."
+                echo "Proceeding will restore all settings to vanilla GNOME defaults."
+                echo ""
             fi
             gum confirm "Disable all Bluefin GNOME customizations?" || exit 0
             _disable_bluefin_gnome

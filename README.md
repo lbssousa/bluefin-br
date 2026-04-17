@@ -107,15 +107,26 @@ This image ships all of Bluefin's standard GNOME customizations (extensions, key
 ### Usage
 
 ```bash
-# Auto-detect current state and flip it (interactive prompt)
+# Auto-detect current state and flip it (interactive prompt).
+# If settings are in a mixed state, you will be asked to choose enable or disable.
 ujust toggle-bluefin-gnome
 
-# Force-enable Bluefin customizations (no-op if already enabled)
+# Apply all Bluefin defaults (no-op if already fully enabled;
+# shows a warning and proceeds if in a mixed state)
 ujust toggle-bluefin-gnome enable
 
-# Force-disable Bluefin customizations and restore vanilla GNOME defaults (no-op if already disabled)
+# Apply all vanilla GNOME defaults (no-op if already fully disabled;
+# shows a warning and proceeds if in a mixed state)
 ujust toggle-bluefin-gnome disable
 ```
+
+### Mixed / partial state
+
+State detection uses five representative indicator keys. When at least one key is at its Bluefin value and at least one is at its GNOME upstream default, the state is reported as **mixed** (i.e. some settings were manually changed):
+
+- **`toggle`** — displays an explanation and prompts you to pick `enable` or `disable` explicitly via an interactive menu; no automatic flip is performed.
+- **`enable`** — shows a warning that some settings were changed, then forces **all** settings to Bluefin defaults. Keys that already have their Bluefin value are silently reset (idempotent).
+- **`disable`** — shows a warning that some settings were changed, then forces **all** settings to vanilla GNOME defaults. Keys already at their GNOME default are silently re-applied (idempotent).
 
 ### What is toggled
 
@@ -134,7 +145,7 @@ ujust toggle-bluefin-gnome disable
 | Volume above 100% | Allowed | Not allowed |
 | New window centering | Yes | No |
 
-> **Note**: Disabling sets explicit user-level overrides with vanilla GNOME values. Re-enabling clears those overrides so the system-level Bluefin defaults take effect again.
+> **Note**: Disabling sets explicit user-level overrides with vanilla GNOME values. Re-enabling clears those overrides so the system-level Bluefin defaults take effect again. Both operations are idempotent — running them again when already in the target state is safe.
 
 ---
 
