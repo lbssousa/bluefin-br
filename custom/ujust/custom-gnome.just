@@ -27,6 +27,7 @@ toggle-bluefin-gnome ACTION="toggle":
         gsettings set org.gnome.desktop.interface monospace-font-name "Monospace 11"
 
         # Window manager: remove minimize/maximize buttons, revert titlebar font
+        # An empty titlebar-font is the GNOME upstream default (means: use interface font)
         gsettings set org.gnome.desktop.wm.preferences button-layout "appmenu:close"
         gsettings set org.gnome.desktop.wm.preferences titlebar-font ""
 
@@ -113,7 +114,7 @@ toggle-bluefin-gnome ACTION="toggle":
         local layout extensions
         layout="$(gsettings get org.gnome.desktop.wm.preferences button-layout)"
         extensions="$(gsettings get org.gnome.shell enabled-extensions)"
-        if echo "${extensions}" | grep -qF 'dash-to-dock' || [[ "${layout}" == "':minimize,maximize,close'" ]]; then
+        if [[ "${extensions}" == *'dash-to-dock'* ]] || [[ "${layout}" == *'minimize,maximize,close'* ]]; then
             echo "enabled"
         else
             echo "disabled"
