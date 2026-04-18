@@ -14,9 +14,10 @@ set -eoux pipefail
 
 echo "::group:: Install DX Packages"
 
-# DX packages from Fedora repos
+# DX packages from Fedora repos - aligned with upstream Bluefin
 FEDORA_PACKAGES=(
     # Containerization and virtualisation tools
+    android-tools
     cockpit-bridge
     cockpit-machines
     cockpit-networkmanager
@@ -25,10 +26,16 @@ FEDORA_PACKAGES=(
     cockpit-selinux
     cockpit-storaged
     cockpit-system
+    dbus-x11
     edk2-ovmf
     flatpak-builder
+    genisoimage
+    incus
+    incus-agent
     libvirt
     libvirt-nss
+    lxc
+    osbuild-selinux
     podman-compose
     podman-machine
     podman-tui
@@ -42,9 +49,12 @@ FEDORA_PACKAGES=(
     qemu-user-binfmt
     qemu-user-static
     virt-manager
+    virt-v2v
     virt-viewer
+    ydotool
     # Developer tools and fonts
     bcc
+    bpftop
     bpftrace
     cascadia-code-fonts
     git-subtree
@@ -55,6 +65,7 @@ FEDORA_PACKAGES=(
     p7zip
     p7zip-plugins
     sysprof
+    tiptop
     trace-cmd
     udica
     util-linux-script
@@ -62,6 +73,15 @@ FEDORA_PACKAGES=(
 
 echo "Installing ${#FEDORA_PACKAGES[@]} DX packages from Fedora repos..."
 dnf5 install -y "${FEDORA_PACKAGES[@]}"
+
+# Install ROCm packages for AMD GPU compute (not on NVIDIA images)
+IMAGE_NAME="${IMAGE_NAME:-bluefin-br}"
+if [[ ! "${IMAGE_NAME}" =~ nvidia ]]; then
+    dnf5 install -y \
+        rocm-hip \
+        rocm-opencl \
+        rocm-smi
+fi
 
 # Docker CE from official repo
 dnf config-manager addrepo --from-repofile=https://download.docker.com/linux/fedora/docker-ce.repo
@@ -71,7 +91,8 @@ dnf5 install -y --enablerepo=docker-ce-stable \
     docker-buildx-plugin \
     docker-ce \
     docker-ce-cli \
-    docker-compose-plugin
+    docker-compose-plugin \
+    docker-model-plugin
 
 # Visual Studio Code from Microsoft repo
 tee /etc/yum.repos.d/vscode.repo <<'EOF'
@@ -88,6 +109,19 @@ dnf5 install -y --enablerepo=code code
 # Enable DX-specific services
 systemctl enable docker.socket
 systemctl enable podman.socket
+
+# Disable Cisco OpenH264 and RPM Fusion repos to match upstream Bluefin
+if [[ -f /etc/yum.repos.d/fedora-cisco-openh264.repo ]]; then
+    sed -i 's@enabled=1@enabled=0@g' /etc/yum.repos.d/fedora-cisco-openh264.repo
+fi
+if [[ -f /etc/yum.repos.d/_copr_ublue-os-akmods.repo ]]; then
+    sed -i 's@enabled=1@enabled=0@g' /etc/yum.repos.d/_copr_ublue-os-akmods.repo
+fi
+for i in /etc/yum.repos.d/rpmfusion-*.repo; do
+    if [[ -f "${i}" ]]; then
+        sed -i 's@enabled=1@enabled=0@g' "${i}"
+    fi
+done
 
 echo "::endgroup::"
 

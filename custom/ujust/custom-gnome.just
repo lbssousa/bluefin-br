@@ -21,6 +21,8 @@ toggle-bluefin-gnome ACTION="toggle":
 
         # Interface: revert fonts and display settings to GNOME upstream defaults
         gsettings set org.gnome.desktop.interface clock-show-weekday false
+        gsettings set org.gnome.desktop.interface enable-hot-corners true
+        gsettings set org.gnome.desktop.interface accent-color "default"
         gsettings set org.gnome.desktop.interface font-antialiasing "grayscale"
         gsettings set org.gnome.desktop.interface font-name "Adwaita Sans 11"
         gsettings set org.gnome.desktop.interface document-font-name "Adwaita Sans 11"
@@ -80,6 +82,8 @@ toggle-bluefin-gnome ACTION="toggle":
         # Reset all user-level overrides so system Bluefin gschema defaults take effect
         gsettings reset org.gnome.shell enabled-extensions
         gsettings reset org.gnome.desktop.interface clock-show-weekday
+        gsettings reset org.gnome.desktop.interface enable-hot-corners
+        gsettings reset org.gnome.desktop.interface accent-color
         gsettings reset org.gnome.desktop.interface font-antialiasing
         gsettings reset org.gnome.desktop.interface font-name
         gsettings reset org.gnome.desktop.interface document-font-name

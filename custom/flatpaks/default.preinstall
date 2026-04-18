@@ -75,6 +75,15 @@ Branch=stable
 [Flatpak Preinstall com.github.rafostar.Clapper]
 Branch=stable
 
+[Flatpak Preinstall org.gnome.Showtime]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.Snapshot]
+Branch=stable
+
+[Flatpak Preinstall org.gnome.SoundRecorder]
+Branch=stable
+
 # System Utilities
 [Flatpak Preinstall com.github.tchx84.Flatseal]
 Branch=stable
@@ -92,6 +101,9 @@ Branch=stable
 Branch=stable
 
 [Flatpak Preinstall io.gitlab.adhami3310.Impression]
+Branch=stable
+
+[Flatpak Preinstall it.mijorus.smile]
 Branch=stable
 
 # Universal Blue Specific
