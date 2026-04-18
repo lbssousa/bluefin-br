@@ -78,9 +78,26 @@ echo "::group:: Remove Packages"
 
 # Remove packages not present in upstream Bluefin
 EXCLUDED_PACKAGES=(
-    gnome-software
+    fedora-bookmarks
+    fedora-chromium-config
+    fedora-chromium-config-gnome
+    firefox
+    firefox-langpacks
+    gnome-extensions-app
+    gnome-shell-extension-background-logo
     gnome-software-rpm-ostree
+    gnome-terminal-nautilus
+    podman-docker
+    yelp
 )
+
+# Version-specific package exclusions
+FEDORA_MAJOR_VERSION="$(rpm -E %fedora)"
+case "${FEDORA_MAJOR_VERSION}" in
+    42|43)
+        EXCLUDED_PACKAGES+=(gnome-software cosign)
+        ;;
+esac
 
 readarray -t INSTALLED_EXCLUDED < <(rpm -qa --queryformat='%{NAME}\n' "${EXCLUDED_PACKAGES[@]}" 2>/dev/null || true)
 if [[ "${#INSTALLED_EXCLUDED[@]}" -gt 0 ]]; then
@@ -93,17 +110,114 @@ echo "::endgroup::"
 
 echo "::group:: Install Packages"
 
-# Install packages using dnf5
-dnf5 install -y \
-    fish \
-    glow \
-    gum \
-    jetbrains-mono-fonts-all \
-    just \
+# Base packages from Fedora repos - aligned with upstream Bluefin
+FEDORA_PACKAGES=(
+    adcli
+    adw-gtk3-theme
+    adwaita-fonts-all
+    autofs
+    bash-color-prompt
+    bcache-tools
+    bootc
+    borgbackup
+    containerd
+    cryfs
+    davfs2
+    ddcutil
+    evtest
+    fastfetch
+    firewall-config
+    fish
+    foo2zjs
+    gcc
+    git-credential-libsecret
+    glow
+    gnome-tweaks
+    gum
+    hplip
+    ibus-mozc
+    ifuse
+    igt-gpu-tools
+    input-remapper
+    iwd
+    jetbrains-mono-fonts-all
+    just
+    krb5-workstation
+    libgda
+    libgda-sqlite
+    libimobiledevice
+    libratbag-ratbagd
+    libxcrypt-compat
+    lm_sensors
+    make
+    mesa-libGLU
+    mozc
+    nautilus-gsconnect
+    oddjob-mkhomedir
+    opendyslexic-fonts
+    openssh-askpass
+    powerstat
+    powertop
+    printer-driver-brlaser
+    pulseaudio-utils
+    python3-pip
+    python3-pygit2
+    rclone
+    restic
+    samba
+    samba-dcerpc
+    samba-ldb-ldap-modules
+    samba-winbind-clients
+    samba-winbind-modules
+    setools-console
+    sssd-nfs-idmap
+    switcheroo-control
+    tmux
+    usbip
+    usbmuxd
+    waypipe
+    wireguard-tools
+    wl-clipboard
+    xdg-terminal-exec
+    xprop
+    zenity
     zsh
+)
+
+# Version-specific Fedora package additions
+case "${FEDORA_MAJOR_VERSION}" in
+    42)
+        FEDORA_PACKAGES+=(
+            evolution-ews-core
+            uld
+        )
+        ;;
+    43)
+        FEDORA_PACKAGES+=(
+            evolution-ews-core
+            gnupg2-scdaemon
+        )
+        ;;
+esac
+
+echo "Installing ${#FEDORA_PACKAGES[@]} packages from Fedora repos..."
+dnf5 install -y "${FEDORA_PACKAGES[@]}"
+
+# Install Tailscale from official repo
+dnf config-manager addrepo --from-repofile=https://pkgs.tailscale.com/stable/fedora/tailscale.repo
+dnf config-manager setopt tailscale-stable.enabled=0
+dnf5 install -y --enablerepo='tailscale-stable' tailscale
 
 # Install nerd-fonts from COPR (provides JetBrainsMono Nerd Font family)
 copr_install_isolated "che/nerd-fonts" "nerd-fonts"
+
+# Install uupd (Universal Update daemon) from ublue-os/packages COPR
+copr_install_isolated "ublue-os/packages" "uupd"
+
+# Disable Cisco OpenH264 repo (matches upstream Bluefin behavior)
+if [[ -f /etc/yum.repos.d/fedora-cisco-openh264.repo ]]; then
+    sed -i 's@enabled=1@enabled=0@g' /etc/yum.repos.d/fedora-cisco-openh264.repo
+fi
 
 echo "::endgroup::"
 
