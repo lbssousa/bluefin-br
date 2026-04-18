@@ -95,10 +95,12 @@ echo "::group:: Install Packages"
 
 # Install packages using dnf5
 dnf5 install -y \
+    fish \
     glow \
     gum \
     jetbrains-mono-fonts-all \
-    just
+    just \
+    zsh
 
 # Install nerd-fonts from COPR (provides JetBrainsMono Nerd Font family)
 copr_install_isolated "che/nerd-fonts" "nerd-fonts"
