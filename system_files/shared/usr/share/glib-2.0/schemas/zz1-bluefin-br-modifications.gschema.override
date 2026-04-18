@@ -1,0 +1,9 @@
+# Local overrides for bluefin-br
+# Overrides zz0-bluefin-modifications.gschema.override from @projectbluefin/common
+# to reflect the extensions actually installed in this project.
+
+[org.gnome.shell]
+# Replace custom-command-list@storageb.github.com (not installed) with
+# logomenu@aryan_k (installed). Also remove tailscale@joaophi.github.com
+# (not installed) so GNOME Shell does not try — and fail — to enable it.
+enabled-extensions=['appindicatorsupport@rgcjonas.gmail.com', 'dash-to-dock@micxgx.gmail.com', 'blur-my-shell@aunetx', 'gsconnect@andyholmes.github.io', 'logomenu@aryan_k', 'search-light@icedman.github.com']
