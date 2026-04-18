@@ -54,10 +54,12 @@ toggle-bluefin-gnome ACTION="toggle":
         gsettings set org.gtk.Settings.FileChooser sort-directories-first false
         gsettings set org.gtk.gtk4.Settings.FileChooser sort-directories-first false
 
-        # GNOME Software: restore update settings
-        gsettings set org.gnome.software allow-updates true
-        gsettings set org.gnome.software download-updates true
-        gsettings set org.gnome.software download-updates-notify true
+        # GNOME Software: restore update settings (only if schema is present)
+        if gsettings list-schemas 2>/dev/null | grep -q "^org.gnome.software$"; then
+            gsettings set org.gnome.software allow-updates true
+            gsettings set org.gnome.software download-updates true
+            gsettings set org.gnome.software download-updates-notify true
+        fi
 
         # Mutter/Compositor: revert window placement and display features
         gsettings set org.gnome.mutter center-new-windows false
@@ -97,9 +99,11 @@ toggle-bluefin-gnome ACTION="toggle":
         gsettings reset org.gnome.settings-daemon.plugins.media-keys home
         gsettings reset org.gtk.Settings.FileChooser sort-directories-first
         gsettings reset org.gtk.gtk4.Settings.FileChooser sort-directories-first
-        gsettings reset org.gnome.software allow-updates
-        gsettings reset org.gnome.software download-updates
-        gsettings reset org.gnome.software download-updates-notify
+        if gsettings list-schemas 2>/dev/null | grep -q "^org.gnome.software$"; then
+            gsettings reset org.gnome.software allow-updates
+            gsettings reset org.gnome.software download-updates
+            gsettings reset org.gnome.software download-updates-notify
+        fi
         gsettings reset org.gnome.mutter center-new-windows
         gsettings reset org.gnome.mutter check-alive-timeout
         gsettings reset org.gnome.mutter experimental-features
