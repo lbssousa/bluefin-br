@@ -137,7 +137,6 @@ FEDORA_PACKAGES=(
     hplip
     ibus-mozc
     ifuse
-    igt-gpu-tools
     input-remapper
     iwd
     jetbrains-mono-fonts-all
