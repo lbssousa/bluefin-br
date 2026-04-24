@@ -152,6 +152,15 @@ systemctl enable ecbd.service || true
 
 echo "::endgroup::"
 
+echo "::group:: Cleanup device nodes"
+
+# Device nodes (e.g. /dev/ecblp0) created by the epson-printer-utility RPM
+# post-install scriptlet cannot be stored in OCI image layers; they must be
+# created at runtime by udev. Remove them here to avoid rechunking failures.
+find /dev -name 'ecblp*' -delete 2>/dev/null || true
+
+echo "::endgroup::"
+
 echo "::group:: Cleanup Build Dependencies"
 
 dnf5 remove -y \
