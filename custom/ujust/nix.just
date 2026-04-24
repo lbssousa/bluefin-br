@@ -10,24 +10,24 @@ nix-status:
     set -euo pipefail
     echo "=== Nix Installation Status ==="
     if [[ -f /var/nix/.nix-installed ]]; then
-        echo "Status: Instalado ✓"
+        echo "Status: Installed ✓"
         if command -v nix &>/dev/null; then
-            echo "Versão: $(nix --version 2>/dev/null || echo 'desconhecida')"
+            echo "Version: $(nix --version 2>/dev/null || echo 'unknown')"
         fi
         if systemctl is-active --quiet nix-daemon.service 2>/dev/null; then
-            echo "Daemon: ativo ✓"
+            echo "Daemon: active ✓"
         else
-            echo "Daemon: inativo"
+            echo "Daemon: inactive"
         fi
     elif systemctl is-active --quiet nix-first-boot.service 2>/dev/null; then
-        echo "Status: Instalando... (acompanhe os logs com: journalctl -u nix-first-boot.service -f)"
+        echo "Status: Installing... (follow logs with: journalctl -u nix-first-boot.service -f)"
     elif systemctl is-failed --quiet nix-first-boot.service 2>/dev/null; then
-        echo "Status: Falha na instalação"
-        echo "Execute 'ujust nix-install' para tentar novamente, ou veja os logs:"
+        echo "Status: Installation failed"
+        echo "Run 'ujust nix-install' to retry, or check the logs:"
         echo "  journalctl -u nix-first-boot.service"
     else
-        echo "Status: Não instalado"
-        echo "Execute 'ujust nix-install' para instalar o Nix"
+        echo "Status: Not installed"
+        echo "Run 'ujust nix-install' to install Nix"
     fi
 
 # Install Nix via DeterminateSystems nix-installer (triggers the first-boot service)
@@ -36,34 +36,35 @@ nix-install:
     #!/usr/bin/bash
     set -euo pipefail
     if [[ -f /var/nix/.nix-installed ]]; then
-        echo "Nix já está instalado."
+        echo "Nix is already installed."
         if command -v nix &>/dev/null; then
-            echo "Versão: $(nix --version)"
+            echo "Version: $(nix --version)"
         fi
         exit 0
     fi
-    echo "Iniciando instalação do Nix..."
-    echo "Esta operação requer conexão com a internet para baixar os pacotes Nix."
+    echo "Starting Nix installation..."
+    echo "This requires internet access to download Nix packages."
     echo ""
-    # Reset a failed first-boot service so it can be started again
+    # Reset any previously failed state so the service can be started again
     sudo systemctl reset-failed nix-first-boot.service 2>/dev/null || true
     # Ensure /var/nix exists and nix.mount is active before running the installer
     sudo systemctl start nix.mount
-    # Start (or restart) the first-boot installation service
-    sudo systemctl start nix-first-boot.service &
-    # Follow the installation logs in real time
-    sudo journalctl -u nix-first-boot.service -f --no-tail
-    # Verify the result
+    # Start the installer without blocking so we can follow logs immediately.
+    # journalctl --no-tail shows all historical entries plus new ones, avoiding
+    # any race condition between service start and log following.
+    sudo systemctl start --no-block nix-first-boot.service
+    echo "Following installation logs (Ctrl+C stops log output, not the install)..."
+    sudo journalctl -u nix-first-boot.service --follow --no-tail || true
+    # Verify the result after log following ends (user pressed Ctrl+C or service finished)
     if [[ -f /var/nix/.nix-installed ]]; then
         echo ""
-        echo "Nix instalado com sucesso!"
-        echo "Faça logout e login novamente para usar o Nix, ou execute:"
+        echo "Nix installed successfully!"
+        echo "Log out and back in to use Nix, or run:"
         echo "  source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh"
     else
         echo ""
-        echo "A instalação do Nix pode ter falhado. Veja os logs:"
-        echo "  journalctl -u nix-first-boot.service"
-        exit 1
+        echo "Installation is still in progress or may have failed."
+        echo "Check status: journalctl -u nix-first-boot.service"
     fi
 
 # Uninstall Nix using the DeterminateSystems uninstaller
@@ -72,16 +73,25 @@ nix-uninstall:
     #!/usr/bin/bash
     set -euo pipefail
     if [[ ! -f /var/nix/.nix-installed ]]; then
-        echo "Nix não está instalado."
+        echo "Nix is not installed."
         exit 0
     fi
-    if ! gum confirm "Deseja desinstalar o Nix? Esta ação removerá todos os pacotes instalados via Nix."; then
-        echo "Operação cancelada."
-        exit 0
+    # Confirm before uninstalling – support gum (interactive) with a plain read fallback
+    if command -v gum &>/dev/null; then
+        if ! gum confirm "Uninstall Nix? This will remove all packages installed via Nix."; then
+            echo "Operation cancelled."
+            exit 0
+        fi
+    else
+        read -rp "Uninstall Nix? This will remove all packages installed via Nix. [y/N] " _confirm
+        if [[ "${_confirm,,}" != "y" ]]; then
+            echo "Operation cancelled."
+            exit 0
+        fi
     fi
-    echo "Desinstalando Nix..."
+    echo "Uninstalling Nix..."
     sudo /usr/libexec/nix-installer uninstall --no-confirm
     sudo rm -f /var/nix/.nix-installed
-    echo "Nix desinstalado."
-    echo "Nota: /var/nix pode ainda conter arquivos residuais."
-    echo "Para remover completamente, execute: sudo rm -rf /var/nix"
+    echo "Nix uninstalled."
+    echo "Note: /var/nix may still contain residual files."
+    echo "To remove completely, run: sudo rm -rf /var/nix"
