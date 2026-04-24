@@ -157,7 +157,9 @@ echo "::group:: Cleanup device nodes"
 # Device nodes (e.g. /dev/ecblp0) created by the epson-printer-utility RPM
 # post-install scriptlet cannot be stored in OCI image layers; they must be
 # created at runtime by udev. Remove them here to avoid rechunking failures.
-find /dev -name 'ecblp*' -delete 2>/dev/null || true
+# Use -xdev to stay within the root filesystem (avoiding bind/tmpfs mounts),
+# and target all special file types that bootc/rpm-ostree cannot process.
+find / -xdev \( -type c -o -type b -o -type p -o -type s \) -name 'ecblp*' -delete 2>/dev/null || true
 
 echo "::endgroup::"
 
