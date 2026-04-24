@@ -25,6 +25,8 @@ dnf remove -y ublue-os-luks ublue-os-just ublue-os-udev-rules ublue-os-signing u
 
 # Copy shared system files from @projectbluefin/common (common baseline for all ublue images)
 rsync -rvK /ctx/oci/common/shared/ /
+# Copy Bluefin-specific system files from @projectbluefin/common (ujust entry point, system/changelog scripts, etc.)
+rsync -rvK /ctx/oci/common/bluefin/ /
 # Copy Homebrew integration system files from @ublue-os/brew
 rsync -rvK /ctx/oci/brew/ /
 
