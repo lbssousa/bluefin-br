@@ -13,7 +13,7 @@ Here are the changes from Bluefin. This image is based on [Bluefin](https://proj
 - **Epson Printer Utility** (`epson-printer-utility`): Graphical utility for printer maintenance tasks such as nozzle check, print head cleaning, and ink level monitoring. Installed from Epson's official binary RPM. See [Epson Linux support page](https://support.epson.net/linux/Printer/LSB_distribution_pages/en/utility.php).
 - **libfprint with Goodix 538d support**: Custom build of [libfprint](https://fprint.freedesktop.org/) from the [Infinytum fork](https://github.com/infinytum/libfprint/tree/unstable) that adds community-developed Goodix TLS drivers — including `goodixtls53xd` for the **Goodix 538d** fingerprint reader (USB `27c6:538d`). Replaces the system `libfprint` while preserving ABI compatibility. See also [AUR `libfprint-goodix-521d`](https://aur.archlinux.org/packages/libfprint-goodix-521d) (same fork; the package name references the 521d but the fork includes drivers for the entire Goodix TLS family: 511, 52xd, and 53xd).
 - **Goodix FP Dump** (`/opt/goodix-fp-dump`): Python scripts from [goodix-fp-linux-dev/goodix-fp-dump](https://github.com/goodix-fp-linux-dev/goodix-fp-dump) for communicating with, dumping firmware from, and reverse-engineering Goodix USB fingerprint sensors. Installed together with the [goodix-firmware](https://github.com/goodix-fp-linux-dev/goodix-firmware) submodule and a pre-built Python virtual environment containing all required dependencies (`pyusb`, `crcmod`, `python-periphery`, `spidev`, `pycryptodome`, `crccheck`). See the [Goodix Fingerprint Sensor Scripts](#goodix-fingerprint-sensor-scripts) section for usage instructions.
-- **Nix Package Manager infrastructure** ([DeterminateSystems nix-installer](https://github.com/DeterminateSystems/nix-installer)): The `nix-installer` binary is baked into `/usr/libexec/nix-installer` at build time. On an immutable bootc system, `/nix` is an empty bind-mount point and the real Nix store lives in the mutable `/var/nix`. On first boot (with internet access), Nix is automatically installed via `nix-first-boot.service`. See the [Nix Package Manager](#nix-package-manager) section for details.
+- **Nix Package Manager infrastructure** ([DeterminateSystems nix-installer](https://github.com/DeterminateSystems/nix-installer)): The `nix-installer` binary is baked into `/usr/libexec/nix-installer` at build time. On an immutable bootc system, `/nix` is an empty bind-mount point and the real Nix store lives in the mutable `/var/lib/nix`. On first boot (with internet access), Nix is automatically installed via `nix-first-boot.service`. See the [Nix Package Manager](#nix-package-manager) section for details.
 - **Fish shell** (`fish`): The friendly interactive shell, available alongside the system default.
 - **Zsh shell** (`zsh`): The Z shell, set as the default shell for new users. Use `ujust change-shell` to switch your default shell interactively.
 
@@ -22,8 +22,8 @@ Here are the changes from Bluefin. This image is based on [Bluefin](https://proj
 - `big-parental-dns-restore.service` — Restores nftables DNS rules at boot
 - `big-parental-time-check.timer` — Periodic screen time enforcement
 - `ecbd.service` — Epson Connect Billing Daemon, required by `epson-printer-utility`
-- `nix.mount` — Bind-mounts `/var/nix` → `/nix` on every boot, making the persistent Nix store available at the expected path
-- `nix-first-boot.service` — Runs once on first boot (requires internet) to install Nix via the DeterminateSystems nix-installer; skipped on subsequent boots once `/var/nix/.nix-installed` exists
+- `nix.mount` — Bind-mounts `/var/lib/nix` → `/nix` on every boot, making the persistent Nix store available at the expected path
+- `nix-first-boot.service` — Runs once on first boot (requires internet) to install Nix via the DeterminateSystems nix-installer; skipped on subsequent boots once `/var/lib/nix/.nix-installed` exists
 
 ### Optional Image Variants
 - **`bluefin-br-nvidia`** / **`bluefin-br-dx-nvidia`**: Includes NVIDIA **580.xxx** proprietary kernel modules and drivers (via `akmods-nvidia-lts`). Use this variant for NVIDIA video cards that are **not** supported by the newer 590.xxx drivers (e.g., older Kepler and Maxwell GPUs dropped from the current driver series). Switch to this image with:
@@ -235,11 +235,11 @@ sudo systemctl reboot
 
 ## Nix Package Manager
 
-This image ships with [Nix](https://nixos.org/) support using the [DeterminateSystems nix-installer](https://github.com/DeterminateSystems/nix-installer). Because bootc images have a read-only root filesystem, a bind-mount strategy is used: `/var/nix` holds the real, persistent Nix store (in the mutable `/var` partition), and a systemd mount unit (`nix.mount`) binds it to `/nix` on every boot.
+This image ships with [Nix](https://nixos.org/) support using the [DeterminateSystems nix-installer](https://github.com/DeterminateSystems/nix-installer). Because bootc images have a read-only root filesystem, a bind-mount strategy is used: `/var/lib/nix` holds the real, persistent Nix store (in the mutable `/var` partition), and a systemd mount unit (`nix.mount`) binds it to `/nix` on every boot.
 
 ### First Boot
 
-On the first boot after installation (internet connection required), `nix-first-boot.service` automatically installs Nix into `/var/nix`. This process downloads Nix packages from `cache.nixos.org` and may take a few minutes depending on your connection speed. Once complete, a marker file is created at `/var/nix/.nix-installed` so the service is skipped on subsequent boots.
+On the first boot after installation (internet connection required), `nix-first-boot.service` automatically installs Nix into `/var/lib/nix`. This process downloads Nix packages from `cache.nixos.org` and may take a few minutes depending on your connection speed. Once complete, a marker file is created at `/var/lib/nix/.nix-installed` so the service is skipped on subsequent boots.
 
 ### ujust Commands
 

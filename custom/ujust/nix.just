@@ -9,7 +9,7 @@ nix-status:
     #!/usr/bin/bash
     set -euo pipefail
     echo "=== Nix Installation Status ==="
-    if [[ -f /var/nix/.nix-installed ]]; then
+    if [[ -f /var/lib/nix/.nix-installed ]]; then
         echo "Status: Installed ✓"
         if command -v nix &>/dev/null; then
             echo "Version: $(nix --version 2>/dev/null || echo 'unknown')"
@@ -35,7 +35,7 @@ nix-status:
 nix-install:
     #!/usr/bin/bash
     set -euo pipefail
-    if [[ -f /var/nix/.nix-installed ]]; then
+    if [[ -f /var/lib/nix/.nix-installed ]]; then
         echo "Nix is already installed."
         if command -v nix &>/dev/null; then
             echo "Version: $(nix --version)"
@@ -47,7 +47,7 @@ nix-install:
     echo ""
     # Reset any previously failed state so the service can be started again
     sudo systemctl reset-failed nix-first-boot.service 2>/dev/null || true
-    # Ensure /var/nix exists and nix.mount is active before running the installer
+    # Ensure /var/lib/nix exists and nix.mount is active before running the installer
     sudo systemctl start nix.mount
     # Start the installer without blocking so we can follow logs immediately.
     # journalctl --no-tail shows all historical entries plus new ones, avoiding
@@ -56,7 +56,7 @@ nix-install:
     echo "Following installation logs (Ctrl+C stops log output, not the install)..."
     sudo journalctl -u nix-first-boot.service --follow --no-tail || true
     # Verify the result after log following ends (user pressed Ctrl+C or service finished)
-    if [[ -f /var/nix/.nix-installed ]]; then
+    if [[ -f /var/lib/nix/.nix-installed ]]; then
         echo ""
         echo "Nix installed successfully!"
         echo "Log out and back in to use Nix, or run:"
@@ -72,7 +72,7 @@ nix-install:
 nix-uninstall:
     #!/usr/bin/bash
     set -euo pipefail
-    if [[ ! -f /var/nix/.nix-installed ]]; then
+    if [[ ! -f /var/lib/nix/.nix-installed ]]; then
         echo "Nix is not installed."
         exit 0
     fi
@@ -91,7 +91,7 @@ nix-uninstall:
     fi
     echo "Uninstalling Nix..."
     sudo /usr/libexec/nix-installer uninstall --no-confirm
-    sudo rm -f /var/nix/.nix-installed
+    sudo rm -f /var/lib/nix/.nix-installed
     echo "Nix uninstalled."
-    echo "Note: /var/nix may still contain residual files."
-    echo "To remove completely, run: sudo rm -rf /var/nix"
+    echo "Note: /var/lib/nix may still contain residual files."
+    echo "To remove completely, run: sudo rm -rf /var/lib/nix"

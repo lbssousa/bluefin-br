@@ -13,18 +13,18 @@ set -eoux pipefail
 #
 #   Solution: Bind-mount approach
 #     - /nix  → empty directory in the image (serves as the bind-mount point)
-#     - /var/nix → the REAL, persistent Nix store (lives in the mutable /var)
-#     - nix.mount (systemd) bind-mounts /var/nix → /nix on every boot
+#     - /var/lib/nix → the REAL, persistent Nix store (lives in the mutable /var)
+#     - nix.mount (systemd) bind-mounts /var/lib/nix → /nix on every boot
 #
 #   First-boot behavior:
-#     - nix-first-boot.service detects /var/nix/.nix-installed is absent
+#     - nix-first-boot.service detects /var/lib/nix/.nix-installed is absent
 #     - Downloads Nix from cache.nixos.org (requires internet)
-#     - Installs Nix into /nix (writes through bind-mount to /var/nix)
+#     - Installs Nix into /nix (writes through bind-mount to /var/lib/nix)
 #     - Creates nix-daemon.service / socket (enabled for subsequent boots)
-#     - Touches /var/nix/.nix-installed to prevent re-running
+#     - Touches /var/lib/nix/.nix-installed to prevent re-running
 #
 #   Subsequent boots:
-#     - /var/nix already populated → bind-mount makes it available at /nix
+#     - /var/lib/nix already populated → bind-mount makes it available at /nix
 #     - nix-daemon.service starts normally
 #     - nix-first-boot.service is skipped (ConditionPathExists check)
 #
@@ -66,28 +66,28 @@ echo "::group:: Create /nix bind-mount infrastructure"
 
 # Create /nix as an empty directory to act as the bind-mount point.
 # Since / is read-only after bootc deployment, the bind-mount from nix.mount
-# will overlay this directory with the writable /var/nix at runtime.
+# will overlay this directory with the writable /var/lib/nix at runtime.
 mkdir -p /nix
 
-# tmpfiles.d: ensure /var/nix (the persistent Nix store) exists with the right
+# tmpfiles.d: ensure /var/lib/nix (the persistent Nix store) exists with the right
 # permissions before nix.mount tries to bind-mount it.
 cat > /etc/tmpfiles.d/nix.conf << 'EOF'
 # Persistent Nix store directory (mutable /var partition, survives bootc updates)
-d /var/nix 0755 root root -
+d /var/lib/nix 0755 root root -
 EOF
 
-# Systemd mount unit: bind-mount /var/nix → /nix on every boot.
+# Systemd mount unit: bind-mount /var/lib/nix → /nix on every boot.
 # The unit name must match the mount point: /nix → nix.mount.
 cat > /etc/systemd/system/nix.mount << 'EOF'
 [Unit]
 Description=Nix Package Manager Store (/nix)
 Documentation=https://nix.dev
-# systemd-tmpfiles-setup creates /var/nix; ensure it runs before we mount it
+# systemd-tmpfiles-setup creates /var/lib/nix; ensure it runs before we mount it
 After=systemd-tmpfiles-setup.service
 Requires=systemd-tmpfiles-setup.service
 
 [Mount]
-What=/var/nix
+What=/var/lib/nix
 Where=/nix
 Type=none
 Options=bind
@@ -125,7 +125,7 @@ echo "Please ensure you have an internet connection."
     --extra-conf "filter-syscalls = false"
 
 # Mark installation as complete so the service does not re-run on next boot
-touch /var/nix/.nix-installed
+touch /var/lib/nix/.nix-installed
 
 echo "=== Nix installation complete! ==="
 echo "Log out and back in (or source the Nix profile) to use the nix command:"
@@ -143,10 +143,10 @@ Documentation=https://github.com/DeterminateSystems/nix-installer
 # Require network connectivity – Nix packages are downloaded from cache.nixos.org
 After=network-online.target nix.mount
 Wants=network-online.target
-# nix.mount must be active so the installer writes into /var/nix via /nix
+# nix.mount must be active so the installer writes into /var/lib/nix via /nix
 Requires=nix.mount
 # Skip if Nix has already been installed (marker left by nix-first-boot script)
-ConditionPathExists=!/var/nix/.nix-installed
+ConditionPathExists=!/var/lib/nix/.nix-installed
 
 [Service]
 Type=oneshot
