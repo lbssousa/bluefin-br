@@ -28,7 +28,7 @@ Here are the changes from Bluefin. This image is based on [Bluefin](https://proj
 ### Optional Image Variants
 - **`bluefin-br-nvidia`** / **`bluefin-br-dx-nvidia`**: Includes NVIDIA **580.xxx** proprietary kernel modules and drivers (via `akmods-nvidia-lts`). Use this variant for NVIDIA video cards that are **not** supported by the newer 590.xxx drivers (e.g., older Kepler and Maxwell GPUs dropped from the current driver series). Switch to this image with:
   ```bash
-  sudo bootc switch ghcr.io/lbssousa/bluefin-br-nvidia:stable
+  sudo bootc switch --enforce-container-sigpolicy ghcr.io/lbssousa/bluefin-br-nvidia:stable
   ```
 - **`bluefin-br-nvidia-open`** / **`bluefin-br-dx-nvidia-open`**: Includes the latest NVIDIA **590.xxx** open kernel modules (via `akmods-nvidia-open`). Recommended for modern NVIDIA GPUs (Turing/Ampere/Ada/Hopper and newer) supported by the open driver.
 
@@ -40,29 +40,6 @@ Here are the changes from Bluefin. This image is based on [Bluefin](https://proj
 
 *Last updated: 2026-04-24*
 
-## Container Image Signature Verification
-
-### Understanding "ostree-unverified-registry" in `bootc status`
-
-If you see `ostree-unverified-registry:` in the output of `bootc status`, this means the container registry hostname does not have a signature verification policy configured in your current environment. **This does NOT mean the image is unsigned** — our images are cryptographically signed with sigstore.
-
-**When this appears:**
-- **After ISO installation**: Normal. The live installer environment doesn't have `/etc/containers/policy.json` configured yet; policy takes effect after the first boot into the installed system.
-- **After manual rebase** (without `--enforce-container-sigpolicy`): The temporary environment defaults to insecure policy.
-- **Expected behavior**: Changes to `ostree-image-signed:` once policy.json is in place and you use `--enforce-container-sigpolicy`.
-
-**To explicitly enforce signature verification:**
-```bash
-sudo bootc switch --enforce-container-sigpolicy ghcr.io/lbssousa/bluefin-br:stable
-```
-
-**To verify our signatures are valid:**
-```bash
-cosign verify --key https://raw.githubusercontent.com/lbssousa/bluefin-br/main/cosign.pub \
-  ghcr.io/lbssousa/bluefin-br:stable
-```
-
----
 
 ## Available Variants & Tags
 
@@ -100,13 +77,11 @@ All images are published to `ghcr.io/lbssousa/<variant>:<tag>`.
 Switch to this image on any existing Fedora Silverblue/Bluefin system:
 
 ```bash
-sudo bootc switch ghcr.io/lbssousa/bluefin-br:stable
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/lbssousa/bluefin-br:stable
 sudo systemctl reboot
 ```
 
 ---
-
-## Bluefin GNOME Customizations
 
 This image ships all of Bluefin's standard GNOME customizations (extensions, keybindings, fonts, Dash-to-Dock, and more). You can toggle them on or off at any time without rebasing using the `ujust toggle-bluefin-gnome` recipe.
 
@@ -174,10 +149,10 @@ If you are unsure which GPU you have, run `lspci | grep -i nvidia`. Check [NVIDI
 
 ```bash
 # Proprietary legacy drivers (580.xxx) — for older GPUs
-sudo bootc switch ghcr.io/lbssousa/bluefin-br-nvidia:stable
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/lbssousa/bluefin-br-nvidia:stable
 
 # Open kernel modules (590.xxx) — for modern GPUs
-sudo bootc switch ghcr.io/lbssousa/bluefin-br-nvidia-open:stable
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/lbssousa/bluefin-br-nvidia-open:stable
 
 # Reboot to apply the switch
 sudo systemctl reboot
@@ -227,7 +202,7 @@ If `nvidia-smi` returns GPU information, the driver is working correctly.
 ### Switching Back to the Base Image
 
 ```bash
-sudo bootc switch ghcr.io/lbssousa/bluefin-br:stable
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/lbssousa/bluefin-br:stable
 sudo systemctl reboot
 ```
 
