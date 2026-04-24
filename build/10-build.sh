@@ -16,7 +16,7 @@ source /ctx/build/copr-helpers.sh
 # Enable nullglob for all glob operations to prevent failures on empty matches
 shopt -s nullglob
 
-echo "::group:: Copy Bluefin Config from Common"
+echo "::group:: Copy Common Config"
 
 # Remove packages whose files are overridden by @projectbluefin/common.
 # Without removal, these RPM-owned files would be lost if those packages were ever removed,
@@ -25,10 +25,6 @@ dnf remove -y ublue-os-luks ublue-os-just ublue-os-udev-rules ublue-os-signing u
 
 # Copy shared system files from @projectbluefin/common (common baseline for all ublue images)
 rsync -rvK /ctx/oci/common/shared/ /
-# Copy Bluefin-specific system files from @projectbluefin/common (overrides the shared baseline)
-rsync -rvK /ctx/oci/common/bluefin/ /
-# Copy GNOME extensions from local system_files (includes git submodules)
-rsync -rvK /ctx/system_files/shared/ /
 # Copy Homebrew integration system files from @ublue-os/brew
 rsync -rvK /ctx/oci/brew/ /
 
@@ -220,9 +216,6 @@ fi
 
 echo "::endgroup::"
 
-# Build GNOME Extensions (handles its own ::group:: grouping)
-bash /ctx/build/build-gnome-extensions.sh
-
 echo "::group:: Generate Image Info"
 
 IMAGE_INFO="/usr/share/ublue-os/image-info.json"
@@ -260,6 +253,9 @@ echo "::group:: System Configuration"
 # Enable/disable systemd services
 systemctl enable podman.socket
 # Example: systemctl mask unwanted-service
+
+# Set zsh as the default shell for new users
+useradd -D -s /bin/zsh
 
 echo "::endgroup::"
 
