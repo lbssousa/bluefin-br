@@ -3,6 +3,22 @@
 ### custom-system.just
 #######################
 
+# Change the default shell for the current user
+[group('System')]
+change-shell:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    CURRENT_SHELL="$(getent passwd "$(id -un)" | cut -d: -f7)"
+    AVAILABLE_SHELLS="$(grep -v '^#\|^$' /etc/shells)"
+    echo "Current shell: ${CURRENT_SHELL}"
+    SELECTED_SHELL="$(echo "${AVAILABLE_SHELLS}" | gum choose --header "Select your default shell:")"
+    if [[ "${SELECTED_SHELL}" == "${CURRENT_SHELL}" ]]; then
+        echo "Shell is already set to ${SELECTED_SHELL}. No changes made."
+        exit 0
+    fi
+    pkexec usermod -s "${SELECTED_SHELL}" "$(id -un)"
+    echo "Default shell changed to ${SELECTED_SHELL}. Log out and back in for the change to take effect."
+
 # Toggle between bluefin-br and the Developer Experience (overrides Bluefin default for bluefin-br naming)
 [group('System')]
 toggle-devmode:
