@@ -13,12 +13,17 @@ Here are the changes from Bluefin. This image is based on [Bluefin](https://proj
 - **Epson Printer Utility** (`epson-printer-utility`): Graphical utility for printer maintenance tasks such as nozzle check, print head cleaning, and ink level monitoring. Installed from Epson's official binary RPM. See [Epson Linux support page](https://support.epson.net/linux/Printer/LSB_distribution_pages/en/utility.php).
 - **libfprint with Goodix 538d support**: Custom build of [libfprint](https://fprint.freedesktop.org/) from the [Infinytum fork](https://github.com/infinytum/libfprint/tree/unstable) that adds community-developed Goodix TLS drivers — including `goodixtls53xd` for the **Goodix 538d** fingerprint reader (USB `27c6:538d`). Replaces the system `libfprint` while preserving ABI compatibility. See also [AUR `libfprint-goodix-521d`](https://aur.archlinux.org/packages/libfprint-goodix-521d) (same fork; the package name references the 521d but the fork includes drivers for the entire Goodix TLS family: 511, 52xd, and 53xd).
 - **Goodix FP Dump** (`/opt/goodix-fp-dump`): Python scripts from [goodix-fp-linux-dev/goodix-fp-dump](https://github.com/goodix-fp-linux-dev/goodix-fp-dump) for communicating with, dumping firmware from, and reverse-engineering Goodix USB fingerprint sensors. Installed together with the [goodix-firmware](https://github.com/goodix-fp-linux-dev/goodix-firmware) submodule and a pre-built Python virtual environment containing all required dependencies (`pyusb`, `crcmod`, `python-periphery`, `spidev`, `pycryptodome`, `crccheck`). See the [Goodix Fingerprint Sensor Scripts](#goodix-fingerprint-sensor-scripts) section for usage instructions.
+- **Nix Package Manager infrastructure** ([DeterminateSystems nix-installer](https://github.com/DeterminateSystems/nix-installer)): The `nix-installer` binary is baked into `/usr/libexec/nix-installer` at build time. On an immutable bootc system, `/nix` is an empty bind-mount point and the real Nix store lives in the mutable `/var/lib/nix`. On first boot (with internet access), Nix is automatically installed via `nix-first-boot.service`. See the [Nix Package Manager](#nix-package-manager) section for details.
+- **Fish shell** (`fish`): The friendly interactive shell, available alongside the system default.
+- **Zsh shell** (`zsh`): The Z shell, set as the default shell for new users. Use `ujust change-shell` to switch your default shell interactively.
 
 ### Enabled Services
 - `big-parental-daemon.service` — Rust D-Bus daemon for ECA Digital age-range signaling
 - `big-parental-dns-restore.service` — Restores nftables DNS rules at boot
 - `big-parental-time-check.timer` — Periodic screen time enforcement
 - `ecbd.service` — Epson Connect Billing Daemon, required by `epson-printer-utility`
+- `nix.mount` — Bind-mounts `/var/lib/nix` → `/nix` on every boot, making the persistent Nix store available at the expected path
+- `nix-first-boot.service` — Runs once on first boot (requires internet) to install Nix via the DeterminateSystems nix-installer; skipped on subsequent boots once `/var/lib/nix/.nix-installed` exists
 
 ### Optional Image Variants
 - **`bluefin-br-nvidia`** / **`bluefin-br-dx-nvidia`**: Includes NVIDIA **580.xxx** proprietary kernel modules and drivers (via `akmods-nvidia-lts`). Use this variant for NVIDIA video cards that are **not** supported by the newer 590.xxx drivers (e.g., older Kepler and Maxwell GPUs dropped from the current driver series). Switch to this image with:
@@ -33,7 +38,7 @@ Here are the changes from Bluefin. This image is based on [Bluefin](https://proj
 - Based on `ghcr.io/ublue-os/silverblue-main:latest` — identical to Bluefin's base
 - `/opt` is an immutable real directory (not a symlink to `/var/opt`) so that packages installed there — such as `epson-printer-utility` — are correctly included in the image layers and deployed by bootc.
 
-*Last updated: 2026-04-17*
+*Last updated: 2026-04-24*
 
 ## Container Image Signature Verification
 
@@ -225,6 +230,52 @@ If `nvidia-smi` returns GPU information, the driver is working correctly.
 sudo bootc switch ghcr.io/lbssousa/bluefin-br:stable
 sudo systemctl reboot
 ```
+
+---
+
+## Nix Package Manager
+
+This image ships with [Nix](https://nixos.org/) support using the [DeterminateSystems nix-installer](https://github.com/DeterminateSystems/nix-installer). Because bootc images have a read-only root filesystem, a bind-mount strategy is used: `/var/lib/nix` holds the real, persistent Nix store (in the mutable `/var` partition), and a systemd mount unit (`nix.mount`) binds it to `/nix` on every boot.
+
+### First Boot
+
+On the first boot after installation (internet connection required), `nix-first-boot.service` automatically installs Nix into `/var/lib/nix`. This process downloads Nix packages from `cache.nixos.org` and may take a few minutes depending on your connection speed. Once complete, a marker file is created at `/var/lib/nix/.nix-installed` so the service is skipped on subsequent boots.
+
+### ujust Commands
+
+| Command | Description |
+|---|---|
+| `ujust nix-status` | Show whether Nix is installed, the version, and daemon status |
+| `ujust nix-install` | Manually trigger Nix installation (or retry after a failed first-boot) |
+| `ujust nix-uninstall` | Remove Nix using the DeterminateSystems uninstaller |
+
+### Using Nix After Installation
+
+After the first-boot installation completes, log out and back in (or source the profile) to start using the `nix` command:
+
+```bash
+source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+```
+
+### Checking Installation Progress
+
+If the first-boot install is taking a while, you can follow the logs:
+
+```bash
+journalctl -u nix-first-boot.service -f
+```
+
+---
+
+## Changing Your Default Shell
+
+The image ships with **bash**, **fish**, and **zsh** pre-installed. Zsh is set as the default shell for new users. You can switch your own default shell at any time using the interactive `ujust change-shell` recipe:
+
+```bash
+ujust change-shell
+```
+
+This opens an interactive menu listing all shells registered in `/etc/shells`. Select your preferred shell and authenticate with `pkexec` to apply the change. Log out and back in for the new shell to take effect.
 
 ---
 
